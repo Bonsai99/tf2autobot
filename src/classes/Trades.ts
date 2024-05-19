@@ -742,7 +742,7 @@ export default class Trades {
                     counter.setMessage(
                         customMessage
                             ? customMessage
-                            : "Your offer contains wrong value. You've probably made a few mistakes, here's the correct offer."
+                            : "Your offer contains the wrong value. You've probably made a few mistakes, here's the correct offer."
                     );
 
                     function getPureValue(sku: PureSKU) {
@@ -1658,7 +1658,7 @@ export default class Trades {
             // Exit all running apps ("TF2Autobot" or custom, and Team Fortress 2)
             // Will play again after craft/smelt/sort inventory job
             // https://github.com/TF2Autobot/tf2autobot/issues/527
-            this.bot.client.gamesPlayed([]);
+            // this.bot.client.gamesPlayed([]);
 
             this.offerChangedAcc.push({ offer, oldState, timeTakenToComplete });
             log.debug('Accumulated offerChanged: ', this.offerChangedAcc.length);

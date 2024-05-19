@@ -60,6 +60,13 @@ export default function declined(offer: TradeOffer, bot: Bot): void {
         const custom = opt.customMessage.decline.onlyMetal;
         reply = custom ? custom : declined + ' because you might forgot to add items into the trade.';
         //
+    } else if (offerReason.reason === 'OVERPAY') {
+        //
+        const custom = opt.customMessage.decline.overpay;
+        reply = custom
+            ? custom
+            : declined + ' because we are not accepting overpay, please correct your offer to match the listing.';
+        //
     } else if (offerReason.reason === 'DUELING_NOT_5_USES') {
         //
         const custom = opt.customMessage.decline.duelingNot5Uses;

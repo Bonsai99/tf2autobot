@@ -1828,6 +1828,9 @@ export const optionsSchema: jsonschema.Schema = {
                         onlyMetal: {
                             type: 'string'
                         },
+                        overpay: {
+                            type: 'string'
+                        },
                         duelingNot5Uses: {
                             type: 'string'
                         },
@@ -1877,6 +1880,7 @@ export const optionsSchema: jsonschema.Schema = {
                         'giftFailedCheckBanned',
                         'crimeAttempt',
                         'onlyMetal',
+                        'overpay',
                         'duelingNot5Uses',
                         'noiseMakerNot25Uses',
                         'highValueItemsNotSelling',

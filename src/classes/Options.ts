@@ -618,6 +618,7 @@ export const DEFAULTS: JsonOptions = {
             giftFailedCheckBanned: '',
             crimeAttempt: '',
             onlyMetal: '',
+            overpay: '',
             duelingNot5Uses: '',
             noiseMakerNot25Uses: '',
             highValueItemsNotSelling: '',
@@ -1756,6 +1757,7 @@ interface DeclineNote {
     giftFailedCheckBanned?: string;
     crimeAttempt?: string;
     onlyMetal?: string;
+    overpay?: string;
     duelingNot5Uses?: string;
     noiseMakerNot25Uses?: string;
     highValueItemsNotSelling?: string;
