@@ -1256,8 +1256,17 @@ export default class Trades {
         });
     }
 
+    private validateItem(item: EconItem) {
+        if (BigInt(item.assetid) <= 0 || BigInt(item.contextid) <= 0) {
+            throw new Error('Invalid assetid or contextid');
+        }
+    }
+
     sendOffer(offer: TradeOffer): Promise<string> {
         return new Promise((resolve, reject) => {
+            offer.itemsToGive.forEach(item => this.validateItem(item));
+            offer.itemsToReceive.forEach(item => this.validateItem(item));
+
             offer.data('partner', offer.partner.getSteamID64());
 
             const ourItems: TradeOfferManager.TradeOfferItem[] = [];
@@ -1467,7 +1476,7 @@ export default class Trades {
             // determine whether it's good time to restart or not
             try {
                 // test if backpack.tf is alive by performing bptf banned check request
-                await isBptfBanned(steamID, this.bot.options.bptfApiKey, this.bot.userID);
+                await isBptfBanned({ steamID, bptfApiKey: this.bot.options.bptfApiKey, userID: this.bot.userID });
             } catch (err) {
                 // do not restart, try again after 3 minutes
                 clearTimeout(this.restartOnEscrowCheckFailed);
