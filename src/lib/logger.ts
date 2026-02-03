@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 
 import winston from 'winston';
@@ -64,14 +62,15 @@ const consoleFormat = winston.format.combine(
         stack: true
     }),
     winston.format.printf(info => {
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string
         let msg = `${info.timestamp} ${info.level}: ${info.message}`;
 
         const splat = info[Symbol.for('splat') as unknown as string];
 
         if (splat) {
-            if (splat.length === 1) {
+            if ((splat as string).length === 1) {
                 msg += ` ${JSON.stringify(splat[0])}`;
-            } else if (splat.length > 1) {
+            } else if ((splat as string).length > 1) {
                 msg += ` ${JSON.stringify(info[Symbol.for('splat') as unknown as string])}`;
             }
         }

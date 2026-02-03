@@ -27,40 +27,40 @@ export function summarizeToChat(
             ? cT.summary.steamChat
             : 'Summary'
         : cT.summary.discordWebhook
-        ? cT.summary.discordWebhook
-        : '__**Summary**__';
+          ? cT.summary.discordWebhook
+          : '__**Summary**__';
 
     const cTAsked = isSteamChat
         ? cT.asked.steamChat
             ? cT.asked.steamChat
             : '• Asked:'
         : cT.asked.discordWebhook
-        ? cT.asked.discordWebhook
-        : '**• Asked:**';
+          ? cT.asked.discordWebhook
+          : '**• Asked:**';
 
     const cTOffered = isSteamChat
         ? cT.offered.steamChat
             ? cT.offered.steamChat
             : '• Offered:'
         : cT.offered.discordWebhook
-        ? cT.offered.discordWebhook
-        : '**• Offered:**';
+          ? cT.offered.discordWebhook
+          : '**• Offered:**';
 
     const cTProfit = isSteamChat
         ? cT.profitFromOverpay.steamChat
             ? cT.profitFromOverpay.steamChat
             : '📈 Profit from overpay:'
         : cT.profitFromOverpay.discordWebhook
-        ? cT.profitFromOverpay.discordWebhook
-        : '📈 ***Profit from overpay:***';
+          ? cT.profitFromOverpay.discordWebhook
+          : '📈 ***Profit from overpay:***';
 
     const cTLoss = isSteamChat
         ? cT.lossFromUnderpay.steamChat
             ? cT.lossFromUnderpay.steamChat
             : '📉 Loss from underpay:'
         : cT.lossFromUnderpay.discordWebhook
-        ? cT.lossFromUnderpay.discordWebhook
-        : '📉 ***Loss from underpay:***';
+          ? cT.lossFromUnderpay.discordWebhook
+          : '📉 ***Loss from underpay:***';
 
     const isCountered = offer.data('processCounterTime') !== undefined;
     const reply =
@@ -74,8 +74,8 @@ export function summarizeToChat(
             ? value.diff > 0
                 ? `\n${cTProfit} ${value.diffRef} ref` + (value.diffRef >= value.rate ? ` (${value.diffKey})` : '')
                 : value.diff < 0
-                ? `\n${cTLoss} ${value.diffRef} ref` + (value.diffRef >= value.rate ? ` (${value.diffKey})` : '')
-                : ''
+                  ? `\n${cTLoss} ${value.diffRef} ref` + (value.diffRef >= value.rate ? ` (${value.diffKey})` : '')
+                  : ''
             : '');
 
     return reply;
@@ -168,9 +168,11 @@ function getSummary(
         const isTF2Items = testPriceKey(priceKey);
 
         // compatible with pollData from before v3.0.0 / before v2.2.0 and/or v3.0.0 or later ↓
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: Object is possibly 'null'.
         const amount = typeof dict[priceKey] === 'object' ? (dict[priceKey]['amount'] as number) : dict[priceKey];
         const sku =
-            type === 'summary-accepted' ? (entry?.sku ?? priceKey).replace(/;p\d+/, '') : entry?.sku ?? priceKey;
+            type === 'summary-accepted' ? (entry?.sku ?? priceKey).replace(/;p\d+/, '') : (entry?.sku ?? priceKey);
 
         const generateName = isTF2Items
             ? `${bot.schema.getName(SKU.fromString(sku), properName)}${entry?.id ? ` - ${entry.id}` : ''}`
@@ -195,8 +197,8 @@ function getSummary(
                             ? currentStock
                             : currentStock + amount
                         : summaryInProcess
-                        ? currentStock
-                        : currentStock - amount;
+                          ? currentStock
+                          : currentStock - amount;
             } else {
                 oldStock = currentStock;
             }
@@ -217,8 +219,8 @@ function getSummary(
                                 ? currentStock - amount
                                 : currentStock
                             : summaryInProcess
-                            ? currentStock + amount
-                            : currentStock
+                              ? currentStock + amount
+                              : currentStock
                     }${entry ? `/${entry.max}` : ''})`
                 );
             } else {
@@ -232,8 +234,8 @@ function getSummary(
                                           ? currentStock - amount
                                           : currentStock
                                       : summaryInProcess
-                                      ? currentStock + amount
-                                      : currentStock
+                                        ? currentStock + amount
+                                        : currentStock
                               }${entry ? `/${entry.max}` : ''})`
                     }`
                 );

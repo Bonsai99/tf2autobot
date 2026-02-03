@@ -245,30 +245,18 @@ export default class ManagerCommands {
             'https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/f5/f57685d33224e32436f366d1acb4a1769bdfa60f_full.jpg';
         const input = CommandParser.removeCommand(message);
 
-        if (!input || input === `!${command}`) {
-            return this.bot.sendMessage(
-                steamID,
-                `❌ You forgot to add ${command === 'name' ? 'a name' : 'an image url'}. Example: "!${
-                    command === 'name' ? 'name IdiNium' : `avatar ${example}`
-                } "`
-            );
-        }
-
         if (command === 'name') {
-            this.bot.community.editProfile(
-                {
-                    name: input
-                },
-                err => {
-                    if (err) {
-                        log.warn('Error while changing name: ', err);
-                        return this.bot.sendMessage(steamID, `❌ Error while changing name: ${err.message}`);
-                    }
-
-                    this.bot.sendMessage(steamID, '✅ Successfully changed name.');
-                }
+            this.bot.sendMessage(
+                steamID,
+                `The ${prefix}name command has been updated to ${prefix}changeName. Please use the new command going forward!`
             );
         } else {
+            if (!input || input === `!${command}`) {
+                return this.bot.sendMessage(
+                    steamID,
+                    `❌ You forgot to add an image url'. Example: "!${`avatar ${example}`} "`
+                );
+            }
             if (!validUrl.isUri(input)) {
                 return this.bot.sendMessage(steamID, `❌ Your url is not valid. Example: "${prefix}avatar ${example}"`);
             }
@@ -281,6 +269,41 @@ export default class ManagerCommands {
 
                 this.bot.sendMessage(steamID, '✅ Successfully uploaded a new avatar.');
             });
+        }
+    }
+
+    changeNameCommand(steamID: SteamID, message: string, prefix: string): void {
+        const params = CommandParser.parseParams(CommandParser.removeCommand(message));
+        const inputName = params.name as string;
+
+        if (inputName !== undefined) {
+            if (params.i_am_sure !== 'yes_i_am') {
+                return this.bot.sendMessage(
+                    steamID,
+                    `⚠️ Are you sure that you want to change your bot's name?` +
+                        `\nChanging the name will result in a trading cooldown for a few hours on your bot's account` +
+                        `\nIf yes, retry by sending ${prefix}changeName name=${inputName}&i_am_sure=yes_i_am`
+                );
+            } else {
+                this.bot.community.editProfile(
+                    {
+                        name: inputName
+                    },
+                    err => {
+                        if (err) {
+                            log.warn('Error while changing name: ', err);
+                            return this.bot.sendMessage(steamID, `❌ Error while changing name: ${err.message}`);
+                        }
+
+                        this.bot.sendMessage(steamID, '✅ Successfully changed name.');
+                    }
+                );
+            }
+        } else {
+            return this.bot.sendMessage(
+                steamID,
+                `⚠️ Missing name property. Example: "${prefix}changeName name=IdiNium`
+            );
         }
     }
 
@@ -462,8 +485,8 @@ export default class ManagerCommands {
                         totalTime < aMin
                             ? `${Math.round(totalTime / aSecond)} seconds`
                             : totalTime < anHour
-                            ? `${Math.round(totalTime / aMin)} minutes`
-                            : `${Math.round(totalTime / anHour)} hours`
+                              ? `${Math.round(totalTime / aMin)} minutes`
+                              : `${Math.round(totalTime / anHour)} hours`
                     } to complete.`
             );
 
@@ -736,12 +759,15 @@ export default class ManagerCommands {
                     this.bot.setRefreshlistExecutedDelay = (this.pricelistCount > 4000 ? 60 : 30) * 60 * 1000;
                     this.pricelistCount = pricelistCount;
                     this.executedRefreshList = true;
-                    this.executeRefreshListTimeout = setTimeout(() => {
-                        this.lastExecutedRefreshListTime = null;
-                        this.executedRefreshList = false;
-                        this.bot.isRecentlyExecuteRefreshlistCommand = false;
-                        clearTimeout(this.executeRefreshListTimeout);
-                    }, (this.pricelistCount > 4000 ? 60 : 30) * 60 * 1000);
+                    this.executeRefreshListTimeout = setTimeout(
+                        () => {
+                            this.lastExecutedRefreshListTime = null;
+                            this.executedRefreshList = false;
+                            this.bot.isRecentlyExecuteRefreshlistCommand = false;
+                            clearTimeout(this.executeRefreshListTimeout);
+                        },
+                        (this.pricelistCount > 4000 ? 60 : 30) * 60 * 1000
+                    );
 
                     await this.bot.listings.recursiveCheckPricelist(
                         skusToCheck,
@@ -789,26 +815,26 @@ export default class ManagerCommands {
             currKey < userPure.minKeys
                 ? keyBlMin
                 : currKey > userPure.maxKeys
-                ? keyAbMax
-                : currKey > userPure.minKeys && currKey < userPure.maxKeys
-                ? keyAtBet
-                : currKey === userPure.minKeys
-                ? keyAtMin
-                : currKey === userPure.maxKeys
-                ? keyAtMax
-                : '';
+                  ? keyAbMax
+                  : currKey > userPure.minKeys && currKey < userPure.maxKeys
+                    ? keyAtBet
+                    : currKey === userPure.minKeys
+                      ? keyAtMin
+                      : currKey === userPure.maxKeys
+                        ? keyAtMax
+                        : '';
         const refsPosition =
             currRef < userPure.minRefs
                 ? refBlMin
                 : currRef > userPure.maxRefs
-                ? refAbMax
-                : currRef > userPure.minRefs && currRef < userPure.maxRefs
-                ? refAtBet
-                : currRef === userPure.minRefs
-                ? refAtMin
-                : currRef === userPure.maxRefs
-                ? refAtMax
-                : '';
+                  ? refAbMax
+                  : currRef > userPure.minRefs && currRef < userPure.maxRefs
+                    ? refAtBet
+                    : currRef === userPure.minRefs
+                      ? refAtMin
+                      : currRef === userPure.maxRefs
+                        ? refAtMax
+                        : '';
         const summary = `\n• ${userPure.minKeys} ≤ ${pluralize('key', currKey)}(${currKey}) ≤ ${
             userPure.maxKeys
         }\n• ${Currencies.toRefined(userPure.minRefs)} < ${pluralize(
@@ -834,18 +860,18 @@ export default class ManagerCommands {
                 ? status.isBankingKeys
                     ? 'Banking' + (scrapAdjustmentEnabled ? ' (default price)' : '')
                     : status.isBuyingKeys
-                    ? 'Buying for ' +
-                      Currencies.toRefined(
-                          keyPrices.buy.toValue() + (scrapAdjustmentEnabled ? scrapAdjustmentValue : 0)
-                      ).toString() +
-                      ' ref' +
-                      (scrapAdjustmentEnabled ? ` (+${scrapAdjustmentValue} scrap)` : '')
-                    : 'Selling for ' +
-                      Currencies.toRefined(
-                          keyPrices.sell.toValue() - (scrapAdjustmentEnabled ? scrapAdjustmentValue : 0)
-                      ).toString() +
-                      ' ref' +
-                      (scrapAdjustmentEnabled ? ` (${scrapAdjustmentValue} scrap)` : '')
+                      ? 'Buying for ' +
+                        Currencies.toRefined(
+                            keyPrices.buy.toValue() + (scrapAdjustmentEnabled ? scrapAdjustmentValue : 0)
+                        ).toString() +
+                        ' ref' +
+                        (scrapAdjustmentEnabled ? ` (+${scrapAdjustmentValue} scrap)` : '')
+                      : 'Selling for ' +
+                        Currencies.toRefined(
+                            keyPrices.sell.toValue() - (scrapAdjustmentEnabled ? scrapAdjustmentValue : 0)
+                        ).toString() +
+                        ' ref' +
+                        (scrapAdjustmentEnabled ? ` (${scrapAdjustmentValue} scrap)` : '')
                 : 'Not active'
         }`;
         /*
@@ -885,11 +911,14 @@ export default class ManagerCommands {
                 this.bot.setProperties();
 
                 this.executedRefreshSchema = true;
-                this.executeRefreshSchemaTimeout = setTimeout(() => {
-                    this.lastExecutedRefreshSchemaTime = null;
-                    this.executedRefreshSchema = false;
-                    clearTimeout(this.executeRefreshSchemaTimeout);
-                }, 30 * 60 * 1000);
+                this.executeRefreshSchemaTimeout = setTimeout(
+                    () => {
+                        this.lastExecutedRefreshSchemaTime = null;
+                        this.executedRefreshSchema = false;
+                        clearTimeout(this.executeRefreshSchemaTimeout);
+                    },
+                    30 * 60 * 1000
+                );
 
                 this.bot.sendMessage(steamID, '✅ Refresh schema success!');
             });

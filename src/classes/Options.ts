@@ -7,6 +7,13 @@ import validator from '../lib/validator';
 import { Currency } from '../types/TeamFortress2';
 
 export const DEFAULTS: JsonOptions = {
+    globalDisable: {
+        messages: false,
+        greeting: false,
+        commands: false,
+        adminCommands: false
+    },
+
     miscSettings: {
         showOnlyMetal: {
             enable: true
@@ -493,6 +500,9 @@ export const DEFAULTS: JsonOptions = {
             enable: false
         },
         steamApis: {
+            enable: false
+        },
+        expressLoad: {
             enable: false
         }
     },
@@ -1173,6 +1183,15 @@ interface OnlyEnable {
     enable?: boolean;
 }
 
+// ------------ Global Disable ------------
+
+interface GlobalDisable {
+    messages?: boolean;
+    greeting?: boolean;
+    commands?: boolean;
+    adminCommands?: boolean;
+}
+
 // ------------ SortType ------------
 
 interface SortInventory extends OnlyEnable {
@@ -1613,6 +1632,7 @@ interface ManualReview extends OnlyEnable {
 interface InventoryApis {
     steamSupply?: OnlyEnable;
     steamApis?: OnlyEnable;
+    expressLoad?: OnlyEnable;
 }
 
 // ------------ Discord Chat ---------------
@@ -2149,6 +2169,7 @@ interface StrangeParts {
 // ------------ JsonOptions ------------
 
 export interface JsonOptions {
+    globalDisable?: GlobalDisable;
     miscSettings?: MiscSettings;
     sendAlert?: SendAlert;
     pricelist?: Pricelist;
@@ -2197,6 +2218,7 @@ export default interface Options extends JsonOptions {
     discordBotToken?: string;
     steamSupplyApiKey?: string;
     steamApisApiKey?: string;
+    expressLoadApiKey?: string;
 
     admins?: adminData[];
     keep?: string[];
@@ -2249,6 +2271,7 @@ function throwLintError(filepath: string, e: Error): void {
         throw new Error(`${filepath}\n${e.message}`);
     }
 
+    // eslint-disable-next-line @typescript-eslint/only-throw-error
     throw e;
 }
 
@@ -2438,10 +2461,10 @@ function replaceOldProperties(options: DeprecatedJsonOptions): boolean {
 
     // v4.12.1 -> v4.13.0
     /*eslint-disable */
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+
     //@ts-ignore
     if (options.bypass?.bannedPeople !== undefined) {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+
         //@ts-ignore
         const mptfCheckValue = options.bypass.bannedPeople?.checkMptfBanned;
 
@@ -2454,7 +2477,7 @@ function replaceOldProperties(options: DeprecatedJsonOptions): boolean {
             };
         }
 
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+
         //@ts-ignore
         delete options.bypass.bannedPeople;
         isChanged = true;
@@ -2514,6 +2537,7 @@ export function loadOptions(options?: Options): Options {
         discordBotToken: getOption('discordBotToken', '', String, incomingOptions),
         steamSupplyApiKey: getOption('steamsupplyApiKey', '', String, incomingOptions),
         steamApisApiKey: getOption('steamapisApiKey', '', String, incomingOptions),
+        expressLoadApiKey: getOption('expressloadApiKey', '', String, incomingOptions),
 
         admins: getOption('admins', [], jsonParseAdminData, incomingOptions),
         keep: getOption('keep', [], jsonParseArray, incomingOptions),

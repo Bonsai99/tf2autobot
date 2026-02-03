@@ -71,7 +71,7 @@ export default class UserCart extends Cart {
                     'please enable Steam Guard Mobile Authenticator.' +
                     '\nRead:\n' +
                     '• Steam Guard Mobile Authenticator - https://support.steampowered.com/kb_article.php?ref=8625-WRAH-9030' +
-                    '\n• How to set up Steam Guard Mobile Authenticator - https://support.steampowered.com/kb_article.php?ref=4440-RTUI-9218'
+                    '\n• How to set up Steam Guard Mobile Authenticator - https://support.steampowered.com/kb_article.php?ref=4440-RTUI-9218 '
             );
         }
 
@@ -217,7 +217,6 @@ export default class UserCart extends Cart {
         let reverse = false;
         let index = 0;
 
-        /* eslint-disable-next-line no-constant-condition */
         while (true) {
             const key = skus[index];
             // Start at highest currency and check if we should pick that
@@ -838,8 +837,8 @@ export default class UserCart extends Cart {
                         checkedDuel
                             ? ' (not enough Dueling Mini-Game with 5x Uses)'
                             : checkNoiseMaker
-                            ? ' (not enough Noise Maker with 25x Uses)'
-                            : ''
+                              ? ' (not enough Noise Maker with 25x Uses)'
+                              : ''
                     }`,
                     {
                         sku: sku,
@@ -855,8 +854,8 @@ export default class UserCart extends Cart {
                         checkedDuel
                             ? ' (not enough Dueling Mini-Game with 5x Uses)'
                             : checkNoiseMaker
-                            ? ' (not enough Noise Maker with 25x Uses)'
-                            : ''
+                              ? ' (not enough Noise Maker with 25x Uses)'
+                              : ''
                     }`
                 );
             }

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment */
-
 import {
     Client,
     GatewayIntentBits,
@@ -7,7 +5,8 @@ import {
     DiscordAPIError,
     Snowflake,
     ActivityType,
-    ApplicationCommandType
+    ApplicationCommandType,
+    TextChannel
 } from 'discord.js';
 import log from '../lib/logger';
 import Options from './Options';
@@ -22,7 +21,10 @@ export default class DiscordBot {
 
     private MAX_MESSAGE_LENGTH = 2000 - 2; // some characters are reserved
 
-    constructor(private options: Options, private bot: Bot) {
+    constructor(
+        private options: Options,
+        private bot: Bot
+    ) {
         this.client = new Client({
             intents: [
                 GatewayIntentBits.Guilds,
@@ -63,7 +65,7 @@ export default class DiscordBot {
         } catch (err) {
             const error = err as DiscordAPIError;
 
-            if (error.code.toString() === 'TOKEN_INVALID') {
+            if (error.code && error.code.toString() === 'TOKEN_INVALID') {
                 log.error('Failed to login to Discord: bot token is invalid.');
                 throw error; // only "incorrect token" error should crash the bot, so "throw" is only here
             } else {
@@ -120,10 +122,8 @@ export default class DiscordBot {
             await this.bot.handler.onMessage(adminID, message.content);
         } catch (err) {
             log.error(err);
-            message.channel
+            (message.channel as TextChannel)
                 .send(`❌ Error:\n${JSON.stringify(err)}`)
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
                 .catch(err => log.error('Failed to send error message to Discord:', err));
         }
     }
@@ -174,12 +174,10 @@ export default class DiscordBot {
             message = message + '.';
         }
 
-        origMessage.channel
+        (origMessage.channel as TextChannel)
             .send(message)
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            .then(() => log.info(`Message sent to ${origMessage.author.tag} (${origMessage.author.id}): ${message}`));
-        // .catch((err: any) => log.error('Failed to send message to Discord:', err));
+            .then(() => log.info(`Message sent to ${origMessage.author.tag} (${origMessage.author.id}): ${message}`))
+            .catch((err: any) => log.error('Failed to send message to Discord:', err));
     }
 
     private async onClientReady() {
