@@ -2464,7 +2464,6 @@ function replaceOldProperties(options: DeprecatedJsonOptions): boolean {
 
     //@ts-ignore
     if (options.bypass?.bannedPeople !== undefined) {
-
         //@ts-ignore
         const mptfCheckValue = options.bypass.bannedPeople?.checkMptfBanned;
 
@@ -2476,7 +2475,6 @@ function replaceOldProperties(options: DeprecatedJsonOptions): boolean {
                 checkMptfBanned: process.env.MPTF_API_KEY !== undefined ? mptfCheckValue : false // below v4.13.0 -> v4.13.1
             };
         }
-
 
         //@ts-ignore
         delete options.bypass.bannedPeople;
@@ -2516,10 +2514,10 @@ export function loadOptions(options?: Options): Options {
     const steamAccountName = getOption('steamAccountName', '', String, incomingOptions);
     lintAllTheThings(getFilesPath(steamAccountName)); // you shall not pass
 
-    const jsonParseArray = (jsonString: string): string[] => JSON.parse(jsonString) as unknown as string[];
-    const jsonParseBoolean = (jsonString: string): boolean => JSON.parse(jsonString) as unknown as boolean;
-    const jsonParseNumber = (jsonString: string): number => JSON.parse(jsonString) as unknown as number;
-    const jsonParseAdminData = (jsonString: string): adminData[] => JSON.parse(jsonString) as unknown as adminData[];
+    const jsonParseArray = (jsonString: string): string[] => JSON.parse(jsonString) as string[];
+    const jsonParseBoolean = (jsonString: string): boolean => JSON.parse(jsonString) as boolean;
+    const jsonParseNumber = (jsonString: string): number => JSON.parse(jsonString) as number;
+    const jsonParseAdminData = (jsonString: string): adminData[] => JSON.parse(jsonString) as adminData[];
 
     const envOptions = {
         steamAccountName: steamAccountName,

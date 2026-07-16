@@ -46,6 +46,12 @@ import filterAxiosError from '@tf2autobot/filter-axios-error';
 import { axiosAbortSignal } from '../lib/helpers';
 import { apiRequest } from '../lib/apiRequest';
 
+type Callback = (err?: Error | null) => void;
+type HttpError = Error & { code?: string | number };
+
+const TRADE_OFFER_URL_RETRY_BASE_DELAY = 5 * 1000;
+const TRADE_OFFER_URL_RETRY_MAX_DELAY = 5 * 60 * 1000;
+
 export interface SteamTokens {
     refreshToken: string;
     accessToken: string;
@@ -153,6 +159,8 @@ export default class Bot {
     public userID?: string;
 
     private halted = false;
+
+    private tradeOfferUrlRetryTimeout: NodeJS.Timeout = null;
 
     public autoRefreshListingsInterval: NodeJS.Timeout;
 
@@ -638,10 +646,6 @@ export default class Bot {
                     this.listingManager.listings.forEach(listing => {
                         let listingSKU = listing.getSKU();
                         if (listing.intent === 1) {
-                            if (this.options.normalize.painted.our && /;[p][0-9]+/.test(listingSKU)) {
-                                listingSKU = listingSKU.replace(/;[p][0-9]+/, '');
-                            }
-
                             if (this.options.normalize.festivized.our && listingSKU.includes(';festive')) {
                                 listingSKU = listingSKU.replace(';festive', '');
                             }
@@ -653,10 +657,20 @@ export default class Bot {
 
                         let match: Entry | null;
                         const assetIdPrice = this.pricelist.getPrice({ priceKey: listing.id.slice('440_'.length) });
-                        if (null !== assetIdPrice) {
-                            match = assetIdPrice;
-                        } else {
+                        if (assetIdPrice === null) {
                             match = this.pricelist.getPrice({ priceKey: listingSKU });
+
+                            if (
+                                !match &&
+                                listing.intent === 1 &&
+                                this.options.normalize.painted.our &&
+                                /;p\d+/.test(listingSKU)
+                            ) {
+                                const baseSKU = listingSKU.replace(/;p\d+/, '');
+                                match = this.pricelist.getPrice({ priceKey: baseSKU });
+                            }
+                        } else {
+                            match = assetIdPrice;
                         }
 
                         if (isFilterCantAfford && listing.intent === 0 && match !== null) {
@@ -675,6 +689,14 @@ export default class Bot {
                         }
 
                         listings[listingSKU] = (listings[listingSKU] ?? []).concat(listing);
+
+                        if (
+                            this.options.normalize.painted.our &&
+                            /;p\d+/.test(listingSKU) &&
+                            match?.sku !== listingSKU
+                        ) {
+                            listings[match.sku] = (listings[match.sku] ?? []).concat(listing);
+                        }
                     });
 
                     const pricelist = Object.assign({}, this.pricelist.getPrices);
@@ -1174,17 +1196,10 @@ export default class Bot {
                                 callback(err);
                             });
                     },
-                    (callback): void => {
-                        this.community.getTradeURL((err, url) => {
-                            if (err) {
-                                /* eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
-                                return callback(err);
-                            }
-
-                            this.tradeOfferUrl = url;
-                            /* eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
-                            return callback(null);
-                        });
+                    (callback: Callback): void => {
+                        void this.setupTradeOfferUrl()
+                            .then(() => callback(null))
+                            .catch(err => callback(err as Error));
                     }
                 ],
                 (item, callback) => {
@@ -1246,7 +1261,7 @@ export default class Bot {
             () => {
                 this.setProperties();
             },
-            24 * 60 * 60 * 1000
+            5 * 60 * 1000 // Every 5 minutes
         );
     }
 
@@ -1507,6 +1522,87 @@ export default class Bot {
 
         await files.writeFile(tokenPath, '', false).catch(() => {
             // Ignore error
+        });
+    }
+
+    private async setupTradeOfferUrl(): Promise<void> {
+        const cachedTradeOfferUrl = await this.getCachedTradeOfferUrl();
+
+        if (cachedTradeOfferUrl !== null) {
+            this.tradeOfferUrl = cachedTradeOfferUrl;
+            return;
+        }
+
+        try {
+            await this.refreshTradeOfferUrl();
+        } catch (err) {
+            if (!this.isSteamHttp429(err as Error)) {
+                throw err;
+            }
+
+            log.warn('Steam returned HTTP 429 while getting trade offer URL; continuing startup and retrying: ', err);
+            this.scheduleTradeOfferUrlRetry();
+        }
+    }
+
+    private refreshTradeOfferUrl(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.community.getTradeURL((err, url) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                if (!url) {
+                    reject(new Error('Steam did not return a trade offer URL'));
+                    return;
+                }
+
+                this.tradeOfferUrl = url;
+                this.cacheTradeOfferUrl(url);
+                resolve();
+            });
+        });
+    }
+
+    private scheduleTradeOfferUrlRetry(attempt = 1): void {
+        if (this.tradeOfferUrlRetryTimeout) {
+            return;
+        }
+
+        const delay = Math.min(attempt * TRADE_OFFER_URL_RETRY_BASE_DELAY, TRADE_OFFER_URL_RETRY_MAX_DELAY);
+
+        this.tradeOfferUrlRetryTimeout = setTimeout(() => {
+            this.tradeOfferUrlRetryTimeout = null;
+
+            void this.refreshTradeOfferUrl().catch((err: Error) => {
+                log.warn('Failed to refresh trade offer URL, retrying later: ', err);
+                this.scheduleTradeOfferUrlRetry(attempt + 1);
+            });
+        }, delay);
+    }
+
+    private isSteamHttp429(err: Error): boolean {
+        const httpError = err as HttpError;
+        return httpError.code === 429 || httpError.code === '429' || httpError.message === 'HTTP error 429';
+    }
+
+    private async getCachedTradeOfferUrl(): Promise<string | null> {
+        const tradeOfferUrlPath = this.handler.getPaths.files.tradeOfferUrl;
+        const tradeOfferUrl = (await files.readFile(tradeOfferUrlPath, false).catch(() => null)) as unknown;
+
+        if (typeof tradeOfferUrl !== 'string' || tradeOfferUrl.trim() === '') {
+            return null;
+        }
+
+        return tradeOfferUrl.trim();
+    }
+
+    private cacheTradeOfferUrl(tradeOfferUrl: string): void {
+        const tradeOfferUrlPath = this.handler.getPaths.files.tradeOfferUrl;
+
+        files.writeFile(tradeOfferUrlPath, tradeOfferUrl, false).catch(() => {
+            log.error('Error saving Trade Offer Url.');
         });
     }
 
