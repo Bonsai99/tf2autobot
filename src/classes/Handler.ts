@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import SteamID from 'steamid';
-import TradeOfferManager, { PollData, Meta, CustomError } from '@tf2autobot/tradeoffer-manager';
+import TradeOfferManager, { PollData, Meta, CustomError, ActionType } from '@tf2autobot/tradeoffer-manager';
 import Bot from './Bot';
 import { Entry, PricesDataObject, PricesObject } from './Pricelist';
 import { Blocked } from './MyHandler/interfaces';
+import SchemaManager, { Schema } from '@tf2autobot/tf2-schema';
 
 export interface OnRun {
     loginAttempts?: number[];
@@ -15,9 +16,7 @@ export interface OnRun {
 }
 
 export default abstract class Handler {
-    protected constructor(readonly bot: Bot) {
-        this.bot = bot;
-    }
+    protected constructor(readonly bot: Bot) {}
 
     get steamID(): SteamID {
         return this.bot.client.steamID;
@@ -44,6 +43,18 @@ export default abstract class Handler {
     abstract onLoggedOn(): void;
 
     /**
+     * Called when the bot is disconnected from Steam
+     * @param eresult - The reason for disconnection
+     * @param msg - Additional message
+     */
+    abstract onDisconnected(eresult: number, msg?: string): void;
+
+    /**
+     * Called when the bot has logged off from Steam
+     */
+    abstract onLoggedOff(): void;
+
+    /**
      * Called when a new login key has been issued
      * @param loginKey - The new login key
      */
@@ -54,7 +65,7 @@ export default abstract class Handler {
      * @param offer - The new trade offer
      */
     abstract onNewTradeOffer(offer: TradeOfferManager.TradeOffer): Promise<null | {
-        action: 'accept' | 'decline' | 'skip' | 'counter';
+        action: ActionType;
         reason: string;
         meta?: Meta;
     }>;
@@ -65,12 +76,7 @@ export default abstract class Handler {
      * @param action - The action
      * @param reason - The reason for the action
      */
-    abstract onOfferAction(
-        offer: TradeOfferManager.TradeOffer,
-        action: 'accept' | 'decline' | 'skip' | 'counter',
-        reason: string,
-        meta: Meta
-    ): void;
+    abstract onOfferAction(offer: TradeOfferManager.TradeOffer, action: ActionType, reason: string, meta: Meta): void;
 
     /**
      * Called when a new login attempt has been made
@@ -275,6 +281,14 @@ export default abstract class Handler {
      * @param defindex -
      */
     onItemBroadcast(message: string, username: string, wasDestruction: boolean, defindex: number): void {
+        // empty function
+    }
+
+    onItemSchemaUpdate(itemsGame: any): void {
+        // empty function
+    }
+
+    onSchemaUpdate(schema: Schema): void {
         // empty function
     }
 }

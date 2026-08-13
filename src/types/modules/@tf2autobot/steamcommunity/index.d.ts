@@ -1,7 +1,7 @@
 declare module '@tf2autobot/steamcommunity' {
     import { EventEmitter } from 'events';
     import SteamID from 'steamid';
-    import { CookieJar } from 'request';
+    import { CookieJar } from 'tough-cookie';
     import { EFriendRelationship } from 'steam-user';
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -86,6 +86,8 @@ declare module '@tf2autobot/steamcommunity' {
         acceptConfirmationForObject(identitySecret: string, objectID: string, callback: (err?: Error) => void): void;
 
         getFriendsList(callback: (err?: Error, friendlist?: SteamCommunity.FriendList) => void): void;
+
+        acknowledgeTradeProtection(callback?: (err?: Error) => void): void;
     }
 
     namespace SteamCommunity {

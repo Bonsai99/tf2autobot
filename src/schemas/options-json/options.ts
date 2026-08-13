@@ -367,6 +367,12 @@ export const optionsSchema: jsonschema.Schema = {
                 messages: {
                     type: 'boolean'
                 },
+                offerMessages: {
+                    type: 'boolean'
+                },
+                unfriendMessage: {
+                    type: 'boolean'
+                },
                 greeting: {
                     type: 'boolean'
                 },
@@ -377,7 +383,35 @@ export const optionsSchema: jsonschema.Schema = {
                     type: 'boolean'
                 }
             },
-            required: ['messages', 'greeting', 'commands', 'adminCommands'],
+            required: ['messages', 'offerMessages', 'unfriendMessage', 'greeting', 'commands', 'adminCommands'],
+            additionalProperties: false
+        },
+        steamConnection: {
+            type: 'object',
+            properties: {
+                autoReconnect: {
+                    type: 'object',
+                    properties: {
+                        enable: {
+                            type: 'boolean'
+                        },
+                        maxAttempts: {
+                            type: 'number',
+                            minimum: 1
+                        },
+                        delaySeconds: {
+                            type: 'number',
+                            minimum: 1
+                        },
+                        exponentialBackoff: {
+                            type: 'boolean'
+                        }
+                    },
+                    required: ['enable'],
+                    additionalProperties: false
+                }
+            },
+            required: ['autoReconnect'],
             additionalProperties: false
         },
         miscSettings: {
@@ -1624,6 +1658,9 @@ export const optionsSchema: jsonschema.Schema = {
                                 tradeValueInRef: {
                                     type: 'number',
                                     minimum: 0
+                                },
+                                withEscrow: {
+                                    type: 'boolean'
                                 }
                             },
                             required: ['enable', 'itemSkus', 'tradeValueInRef'],

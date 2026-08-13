@@ -15,9 +15,7 @@ type ActionOnTrade = 'accept' | 'accepttrade' | 'decline' | 'declinetrade';
 type ForceAction = 'faccept' | 'fdecline';
 
 export default class ReviewCommands {
-    constructor(private readonly bot: Bot) {
-        this.bot = bot;
-    }
+    constructor(private readonly bot: Bot) {}
 
     tradesCommand(steamID: SteamID, prefix: string): void {
         // Go through polldata and find active offers
@@ -148,23 +146,17 @@ export default class ReviewCommands {
             if (dict === null) {
                 return 'unknown items';
             }
-
             const summary: string[] = [];
-
+            const schema = this.bot.schemaManager.schema;
             for (const sku in dict) {
                 if (!Object.prototype.hasOwnProperty.call(dict, sku)) {
                     continue;
                 }
-
-                const name = testPriceKey(sku) ? this.bot.schema.getName(SKU.fromString(sku), false) : sku;
-
+                const name = testPriceKey(sku) ? schema.getName(SKU.fromString(sku), false) : sku;
                 summary.push(name + (dict[sku] > 1 ? ` x${dict[sku]}` : '')); // dict[sku] = amount
             }
 
-            if (summary.length === 0) {
-                return 'nothing';
-            }
-
+            if (summary.length === 0) return 'nothing';
             return summary.join(', ');
         };
 
@@ -192,15 +184,20 @@ export default class ReviewCommands {
 
         const links = generateLinks(offerData.partner.toString());
         reply +=
-            `\n\nSteam: ${links.steam}\nBackpack.tf: ${links.bptf}\nSteamREP: ${links.steamrep}` +
+            `\n\nSteam: ${links.steam}\nBackpack.tf: ${links.bptf}\nRep.tf: ${links.reptf}` +
             (offerData?.action?.action === 'skip'
-                ? `\n\n⚠️ Send "${prefix}accept ${offerId}" to accept or "${prefix}decline ${offerId}" to decline this offer.`
-                : `\n\n⚠️ Send "${prefix}faccept ${offerId}" to force accept, or "${prefix}fdecline ${offerId}" to decline the trade now!`);
+                ? `\n\n ⚠️ Send "${prefix}accept ${offerId}" to accept or "${prefix}decline ${offerId}" to decline this offer.`
+                : `\n\n ⚠️ Send "${prefix}faccept ${offerId}" to force accept, or "${prefix}fdecline ${offerId}" to decline the trade now!`);
 
         this.bot.sendMessage(steamID, reply);
     }
 
-    async actionOnTradeCommand(steamID: SteamID, message: string, command: ActionOnTrade): Promise<void> {
+    async actionOnTradeCommand(
+        steamID: SteamID,
+        message: string,
+        command: ActionOnTrade,
+        prefix: string
+    ): Promise<void> {
         const offerIdAndMessage = CommandParser.removeCommand(message);
         const offerIdRegex = /\d+/.exec(offerIdAndMessage);
 
@@ -209,7 +206,7 @@ export default class ReviewCommands {
         if (isNaN(+offerIdRegex) || !offerIdRegex) {
             return this.bot.sendMessage(
                 steamID,
-                `⚠️ Missing offer id. Example: "!${isAccepting ? 'accept' : 'decline'} 3957959294"`
+                `⚠️ Missing offer id. Example: "${prefix}${isAccepting ? 'accept' : 'decline'} 3957959294"`
             );
         }
 
@@ -255,7 +252,7 @@ export default class ReviewCommands {
                                 ? this.bot.options.customMessage.accepted.manual.largeOffer
                                 : '.\nMy owner has manually accepted your offer. The trade may take a while to finalize due to it being a large offer.' +
                                       ' If the trade does not finalize after 5-10 minutes has passed, please send your offer again, or add me and use ' +
-                                      'the !sell/!sellcart or !buy/!buycart command.'
+                                      `the ${prefix}sell/${prefix}sellcart or ${prefix}buy/${prefix}buycart command.`
                         );
                     } else {
                         this.bot.sendMessage(
@@ -264,7 +261,7 @@ export default class ReviewCommands {
                                 ? this.bot.options.customMessage.accepted.manual.smallOffer
                                 : '.\nMy owner has manually accepted your offer. The trade should be finalized shortly.' +
                                       ' If the trade does not finalize after 1-2 minutes has passed, please send your offer again, or add me and use ' +
-                                      'the !sell/!sellcart or !buy/!buycart command.'
+                                      `the ${prefix}sell/${prefix}sellcart or ${prefix}buy/${prefix}buycart command.`
                         );
                     }
                 }
@@ -298,7 +295,7 @@ export default class ReviewCommands {
         }
     }
 
-    async forceAction(steamID: SteamID, message: string, command: ForceAction): Promise<void> {
+    async forceAction(steamID: SteamID, message: string, command: ForceAction, prefix: string): Promise<void> {
         const offerIdAndMessage = CommandParser.removeCommand(message);
         const offerIdRegex = /\d+/.exec(offerIdAndMessage);
 
@@ -307,7 +304,7 @@ export default class ReviewCommands {
         if (isNaN(+offerIdRegex) || !offerIdRegex) {
             return this.bot.sendMessage(
                 steamID,
-                `⚠️ Missing offer id. Example: "!${isForceAccepting ? 'faccept' : 'fdecline'} 3957959294"`
+                `⚠️ Missing offer id. Example: "${prefix}${isForceAccepting ? 'faccept' : 'fdecline'} 3957959294"`
             );
         }
 

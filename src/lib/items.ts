@@ -1,25 +1,17 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 import { MinimumItem } from '../types/TeamFortress2';
 import SchemaManager from '@tf2autobot/tf2-schema';
-
-import isObject from 'isobject';
 
 export function fixItem(item: MinimumItem, schema: SchemaManager.Schema): MinimumItem {
     const schemaItem = schema.getItemByDefindex(item.defindex);
     if (schemaItem === null) {
         return item;
     }
-    const itemsCount = schema.raw.schema.items.length;
 
+    const items = schema.raw.schema.items;
     if (schemaItem.name.includes(schemaItem.item_class.toUpperCase())) {
-        for (let i = 0; i < itemsCount; i++) {
-            if (
-                schema.raw.schema.items[i].item_class === schemaItem.item_class &&
-                schema.raw.schema.items[i].name.startsWith('Upgradeable ')
-            ) {
-                item.defindex = schema.raw.schema.items[i].defindex;
+        for (const itemx of items) {
+            if (itemx.item_class === schemaItem.item_class && itemx.name.startsWith('Upgradeable ')) {
+                item.defindex = itemx.defindex;
             }
         }
     }
@@ -102,22 +94,16 @@ export function fixItem(item: MinimumItem, schema: SchemaManager.Schema): Minimu
     const isPromo = isPromoItem(schemaItem);
 
     if (isPromo && item.quality != 1) {
-        for (let i = 0; i < itemsCount; i++) {
-            if (
-                !isPromoItem(schema.raw.schema.items[i]) &&
-                schema.raw.schema.items[i].item_name == schemaItem.item_name
-            ) {
+        for (const itemx of items) {
+            if (!isPromoItem(itemx) && itemx.item_name == schemaItem.item_name) {
                 // This is the non-promo version, use that defindex instead
-                item.defindex = schema.raw.schema.items[i].defindex;
+                item.defindex = itemx.defindex;
             }
         }
     } else if (!isPromo && item.quality == 1) {
-        for (let i = 0; i < itemsCount; i++) {
-            if (
-                isPromoItem(schema.raw.schema.items[i]) &&
-                schema.raw.schema.items[i].item_name == schemaItem.item_name
-            ) {
-                item.defindex = schema.raw.schema.items[i].defindex;
+        for (const itemx of items) {
+            if (isPromoItem(itemx) && itemx.item_name == schemaItem.item_name) {
+                item.defindex = itemx.defindex;
             }
         }
     }
@@ -126,27 +112,17 @@ export function fixItem(item: MinimumItem, schema: SchemaManager.Schema): Minimu
         let series: number | null = null;
 
         if (schemaItem.attributes !== undefined) {
-            const attributesCount = schemaItem.attributes.length;
-
-            for (let i = 0; i < attributesCount; i++) {
-                if (schemaItem.attributes[i].name === 'set supply crate series') {
-                    series = schemaItem.attributes[i].value;
+            const attributes = schemaItem.attributes;
+            for (const attribute of attributes) {
+                if (attribute.name === 'set supply crate series') {
+                    series = attribute.value;
                 }
             }
         }
 
         if (series === null) {
-            const itemsGameItem = schema.raw.items_game.items[item.defindex];
-
-            if (
-                itemsGameItem.static_attrs !== undefined &&
-                itemsGameItem.static_attrs['set supply crate series'] !== undefined
-            ) {
-                if (isObject(itemsGameItem.static_attrs['set supply crate series'])) {
-                    series = itemsGameItem.static_attrs['set supply crate series'].value;
-                } else {
-                    series = itemsGameItem.static_attrs['set supply crate series'];
-                }
+            if (schema.crateSeriesList[item.defindex] !== undefined) {
+                series = schema.crateSeriesList[item.defindex];
             }
         }
 

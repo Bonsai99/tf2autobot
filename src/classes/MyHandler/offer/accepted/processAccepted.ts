@@ -6,11 +6,14 @@ import { KeyPrices } from '../../../Pricelist';
 import log from '../../../../lib/logger';
 import * as t from '../../../../lib/tools/export';
 import { sendTradeSummary } from '../../../DiscordWebhook/export';
+import SchemaManager from '@tf2autobot/tf2-schema';
 
 export default function processAccepted(
     offer: i.TradeOffer,
     bot: Bot,
-    timeTakenToComplete: number
+    schema: SchemaManager.Schema,
+    timeTakenToComplete: number,
+    isAcceptedWithEscrow: boolean
 ): { theirHighValuedItems: string[]; isDisableSKU: string[]; items: i.Items | undefined } {
     const opt = bot.options;
 
@@ -42,10 +45,7 @@ export default function processAccepted(
                 meta.reasons
                     .filter(el => el.reason === '🟨_INVALID_ITEMS')
                     .forEach(el => {
-                        const name = t.testPriceKey(el.sku)
-                            ? bot.schema.getName(SKU.fromString(el.sku), false)
-                            : el.sku;
-
+                        const name = t.testPriceKey(el.sku) ? schema.getName(SKU.fromString(el.sku), false) : el.sku;
                         accepted.invalidItems.push(`${isWebhookEnabled ? `_${name}_` : name} - ${el.price}`);
                     });
             }
@@ -57,8 +57,8 @@ export default function processAccepted(
                     .forEach(el => {
                         accepted.disabledItems.push(
                             isWebhookEnabled
-                                ? `_${bot.schema.getName(SKU.fromString(el.sku), false)}_`
-                                : bot.schema.getName(SKU.fromString(el.sku), false)
+                                ? `_${schema.getName(SKU.fromString(el.sku), false)}_`
+                                : schema.getName(SKU.fromString(el.sku), false)
                         );
                     });
             }
@@ -69,8 +69,8 @@ export default function processAccepted(
                     accepted.overstocked.push(
                         `${
                             isWebhookEnabled
-                                ? `_${bot.schema.getName(SKU.fromString(el.sku), false)}_`
-                                : bot.schema.getName(SKU.fromString(el.sku), false)
+                                ? `_${schema.getName(SKU.fromString(el.sku), false)}_`
+                                : schema.getName(SKU.fromString(el.sku), false)
                         } (amount can buy was ${el.amountCanTrade}, offered ${el.amountOffered})`
                     );
                 });
@@ -83,8 +83,8 @@ export default function processAccepted(
                     accepted.understocked.push(
                         `${
                             isWebhookEnabled
-                                ? `_${bot.schema.getName(SKU.fromString(el.sku), false)}_`
-                                : bot.schema.getName(SKU.fromString(el.sku), false)
+                                ? `_${schema.getName(SKU.fromString(el.sku), false)}_`
+                                : schema.getName(SKU.fromString(el.sku), false)
                         } (amount can sell was ${el.amountCanTrade}, taken ${el.amountTaking})`
                     );
                 });
@@ -94,7 +94,13 @@ export default function processAccepted(
         if (highValue && highValue['has'] === undefined) {
             if (Object.keys(highValue.items.their).length > 0) {
                 // doing this to check if their side have any high value items, if so, push each name into accepted.highValue const.
-                const itemsName = t.getHighValueItems(highValue.items.their, bot);
+                const itemsName = t.getHighValueItems(
+                    highValue.items.their,
+                    schema,
+                    bot.strangeParts,
+                    bot.options,
+                    bot.pricelist
+                );
 
                 for (const name in itemsName) {
                     if (!Object.prototype.hasOwnProperty.call(itemsName, name)) {
@@ -116,7 +122,13 @@ export default function processAccepted(
 
             if (Object.keys(highValue.items.our).length > 0) {
                 // doing this to check if our side have any high value items, if so, push each name into accepted.highValue const.
-                const itemsName = t.getHighValueItems(highValue.items.our, bot);
+                const itemsName = t.getHighValueItems(
+                    highValue.items.our,
+                    schema,
+                    bot.strangeParts,
+                    bot.options,
+                    bot.pricelist
+                );
 
                 for (const name in itemsName) {
                     if (!Object.prototype.hasOwnProperty.call(itemsName, name)) {
@@ -137,7 +149,13 @@ export default function processAccepted(
         // This is for offer that bot created from commands
 
         if (highValue.items && Object.keys(highValue.items.their).length > 0) {
-            const itemsName = t.getHighValueItems(highValue.items.their, bot);
+            const itemsName = t.getHighValueItems(
+                highValue.items.their,
+                schema,
+                bot.strangeParts,
+                bot.options,
+                bot.pricelist
+            );
 
             for (const name in itemsName) {
                 if (!Object.prototype.hasOwnProperty.call(itemsName, name)) {
@@ -158,7 +176,13 @@ export default function processAccepted(
         }
 
         if (highValue.items && Object.keys(highValue.items.our).length > 0) {
-            const itemsName = t.getHighValueItems(highValue.items.our, bot);
+            const itemsName = t.getHighValueItems(
+                highValue.items.our,
+                schema,
+                bot.strangeParts,
+                bot.options,
+                bot.pricelist
+            );
 
             for (const name in itemsName) {
                 if (!Object.prototype.hasOwnProperty.call(itemsName, name)) {
@@ -186,10 +210,11 @@ export default function processAccepted(
             offer,
             accepted,
             bot,
-            timeTakenToComplete,
+            isAcceptedWithEscrow ? null : timeTakenToComplete,
             timeTakenToProcessOrConstruct,
             timeTakenToCounterOffer,
-            isOfferSent
+            isOfferSent,
+            isAcceptedWithEscrow
         );
     } else {
         const itemsName = {
@@ -205,7 +230,7 @@ export default function processAccepted(
         const keyPrices = bot.pricelist.getKeyPrices;
 
         const value = t.valueDiff(offer);
-        const itemList = t.listItems(offer, bot, itemsName, true);
+        const itemList = t.listItems(offer, schema, bot.options, bot.pricelist, itemsName, true);
 
         void sendToAdmin(
             bot,
@@ -214,9 +239,10 @@ export default function processAccepted(
             itemList,
             keyPrices,
             isOfferSent,
-            timeTakenToComplete,
+            isAcceptedWithEscrow ? null : timeTakenToComplete,
             timeTakenToProcessOrConstruct,
-            timeTakenToCounterOffer
+            timeTakenToCounterOffer,
+            isAcceptedWithEscrow
         );
     }
 
@@ -236,7 +262,8 @@ export async function sendToAdmin(
     isOfferSent: boolean,
     timeTakenToComplete: number,
     timeTakenToProcessOrConstruct: number,
-    timeTakenToCounterOffer: number | undefined
+    timeTakenToCounterOffer: number | undefined,
+    isAcceptedWithEscrow: boolean
 ): Promise<void> {
     const opt = bot.options;
     const slots = bot.tf2.backpackSlots;
@@ -260,7 +287,19 @@ export async function sendToAdmin(
     } with ${offer.partner.getSteamID64()} is accepted. ✅`;
 
     const message2 =
-        t.summarizeToChat(offer, bot, 'summary-accepted', false, value, true, isOfferSent) +
+        t.summarizeToChat({
+            offer,
+            schema: bot.schemaManager.schema,
+            options: bot.options,
+            pricelist: bot.pricelist,
+            inventoryManager: bot.inventoryManager,
+            type: 'summary-accepted',
+            withLink: false,
+            value,
+            isSteamChat: true,
+            isOfferSent,
+            isAcceptedWithEscrow
+        }) +
         (isShowOfferMessage
             ? (cTOfferMessage && offer.message ? `\n\n${cTOfferMessage}` : '\n\n💬 Offer message:') +
               ` "${offer.message}"`
@@ -270,7 +309,7 @@ export async function sendToAdmin(
 
     const message4 =
         `\n\n${cTKeyRate} ${keyPrices.buy.toString()}/${keyPrices.sell.toString()}` +
-        ` (${keyPrices.src === 'manual' ? 'manual' : isCustomPricer ? 'custom-pricer' : 'prices.tf'})` +
+        ` (${keyPrices.src === 'manual' ? 'manual' : isCustomPricer ? 'custom-pricer' : 'pricedb.io'})` +
         `${
             autokeys.isEnabled
                 ? ' | Autokeys: ' +
@@ -284,7 +323,7 @@ export async function sendToAdmin(
             slots !== undefined ? `/${slots}` : ''
         }` +
         `\n${cTTimeTaken} ${t.convertTime(
-            timeTakenToComplete,
+            isAcceptedWithEscrow ? null : timeTakenToComplete,
             timeTakenToProcessOrConstruct,
             timeTakenToCounterOffer,
             isOfferSent,

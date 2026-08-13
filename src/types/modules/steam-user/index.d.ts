@@ -5,6 +5,8 @@ declare module 'steam-user' {
     interface Events {
         loggedOn: () => void;
         webSession: (sessionID: string, cookies: string) => void;
+        disconnected: (eresult: EResult, msg?: string) => void;
+        loggedOff: () => void;
         accountLimitations: (
             limited: boolean,
             communityBanned: boolean,
@@ -432,6 +434,8 @@ declare module 'steam-user' {
     }
 
     export default class SteamUser extends EventEmitter {
+        constructor(options?: { autoRelogin?: boolean; renewRefreshTokens?: boolean; saveAppTickets?: boolean });
+
         steamID: SteamID;
 
         limitations: {
@@ -506,6 +510,8 @@ declare module 'steam-user' {
         setPersona(state: number, name?: string): void;
 
         gamesPlayed(apps: Apps, force?: boolean): void;
+
+        getTradeURL(): Promise<{ token: string; url: string }>;
 
         chatMessage(recipient: SteamID | string, message: string): void;
 

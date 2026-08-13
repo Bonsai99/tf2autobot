@@ -18,10 +18,6 @@ export default class RequestCommands {
         private readonly bot: Bot,
         private priceSource: IPricer
     ) {
-        this.bot = bot;
-
-        this.priceSource = priceSource;
-
         Pricecheck.setRequestCheckFn(this.priceSource.requestCheck.bind(this.priceSource));
     }
 
@@ -33,14 +29,14 @@ export default class RequestCommands {
         }
 
         if (sku === undefined) {
-            const item = getItemFromParams(steamID, params, this.bot);
+            const item = getItemFromParams(steamID, params, this.bot, this.bot.schemaManager.schema);
             if (item === null) {
                 return;
             }
 
             sku = SKU.fromObject(item);
         } else {
-            sku = SKU.fromObject(fixItem(SKU.fromString(sku), this.bot.schema));
+            sku = SKU.fromObject(fixItem(SKU.fromString(sku), this.bot.schemaManager.schema));
         }
 
         void this.priceSource
@@ -53,9 +49,12 @@ export default class RequestCommands {
                     if (body.name) {
                         name = body.name;
                     } else {
-                        name = this.bot.schema.getName(SKU.fromString(sku));
+                        name = this.bot.schemaManager.schema.getName(SKU.fromString(sku));
                     }
-                    this.bot.sendMessage(steamID, `✅ Requested pricecheck for ${name}, the item will be checked.`);
+                    this.bot.sendMessage(
+                        steamID,
+                        `✅ Requested pricecheck for ${name} (${sku}), the item will be checked.`
+                    );
                 }
             })
             .catch((err: ErrorRequest) => {
@@ -109,17 +108,16 @@ export default class RequestCommands {
         }
 
         if (sku === undefined) {
-            const item = getItemFromParams(steamID, params, this.bot);
+            const item = getItemFromParams(steamID, params, this.bot, this.bot.schemaManager.schema);
             if (item === null) {
                 return;
             }
 
             sku = SKU.fromObject(item);
-        } else {
-            sku = SKU.fromObject(fixItem(SKU.fromString(sku), this.bot.schema));
         }
+        // Intentionally not standardizing the sku here
 
-        const name = this.bot.schema.getName(SKU.fromString(sku));
+        const name = this.bot.schemaManager.schema.getName(SKU.fromString(sku));
         try {
             const price = await this.priceSource.getPrice(sku);
             const currBuy = new Currencies(price.buy);
@@ -132,7 +130,7 @@ export default class RequestCommands {
         } catch (err) {
             return this.bot.sendMessage(
                 steamID,
-                `Error getting price for ${name === null ? sku : name}: ${
+                `Error getting price for ${name === null ? sku : `${name} (${sku})`}: ${
                     (err as ErrorRequest).body && (err as ErrorRequest).body.message
                         ? (err as ErrorRequest).body.message
                         : (err as ErrorRequest).message
@@ -166,9 +164,7 @@ class Pricecheck {
     constructor(
         private readonly bot: Bot,
         private readonly steamID: SteamID
-    ) {
-        this.bot = bot;
-    }
+    ) {}
 
     set enqueue(skus: string[]) {
         this.skus = skus;

@@ -4,8 +4,9 @@ import Bot from '../../Bot';
 import * as t from '../../../lib/tools/export';
 import sendTradeDeclined from '../../DiscordWebhook/sendTradeDeclined';
 import { KeyPrices } from '../../../classes/Pricelist';
+import SchemaManager from '@tf2autobot/tf2-schema';
 
-export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
+export default function processDeclined(offer: i.TradeOffer, bot: Bot, schema: SchemaManager.Schema): void {
     const opt = bot.options;
 
     const declined: Declined = {
@@ -98,6 +99,16 @@ export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
             case 'NOT_BUYING_KEYS':
                 declined.reasonDescription = offerReceived.reason + ': We are not buying keys.';
                 break;
+            case 'CONTAINS_KEYS_ON_BOTH_SIDES':
+                declined.reasonDescription = offerReceived.reason + ': We are not accepting keys on both sides.';
+                break;
+            case 'CONTAINS_ITEMS_ON_BOTH_SIDES':
+                declined.reasonDescription = offerReceived.reason + ': We are not accepting items on both sides.';
+                break;
+            case 'GIFT_FAILED_CHECK_BANNED':
+                declined.reasonDescription =
+                    offerReceived.reason + ': We failed to ban checks and are unable to accept gift.';
+                break;
             case '🟦_OVERSTOCKED':
                 declined.reasonDescription =
                     offerReceived.reason + ": Offer contains items that'll make us overstocked.";
@@ -131,11 +142,34 @@ export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
                     ': We are paying more than them and we failed to counter the offer, or Steam might be down, or private inventory (failed to load their inventory).';
                 break;
             case 'ONLY_INVALID_VALUE':
+                declined.reasonDescription =
+                    offerReceived.reason +
+                    `: We will receive less than the item(s) value, which also does not exceed our exception value of ${opt.offerReceived.invalidValue.exceptionValue.valueInRef} ref`;
+                break;
             case 'ONLY_INVALID_ITEMS':
+                declined.reasonDescription =
+                    offerReceived.reason +
+                    ': Offer contains invalid items and auto-declined on invalid items is enabled.';
+                break;
             case 'ONLY_DISABLED_ITEMS':
+                declined.reasonDescription =
+                    offerReceived.reason +
+                    ': Offer contains disabled items and auto-declined on disabled items is enabled.';
+                break;
             case 'ONLY_OVERSTOCKED':
+                declined.reasonDescription =
+                    offerReceived.reason +
+                    ': Offer contains overstocked items and auto-declined on overstocked items is enabled.';
+                break;
             case 'ONLY_UNDERSTOCKED':
+                declined.reasonDescription =
+                    offerReceived.reason +
+                    ': Offer contains understocked items and auto-declined on understocked items is enabled.';
+                break;
             case 'ONLY_DUPED_ITEM':
+                declined.reasonDescription =
+                    offerReceived.reason + ': Offer contains duped items and auto-declined on duped items is enabled.';
+                break;
             case 'ONLY_DUPE_CHECK_FAILED':
                 //It was probably faster to make them by hand but :/
                 declined.reasonDescription =
@@ -159,7 +193,7 @@ export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
                         .filter(el => el.reason === '🟨_INVALID_ITEMS')
                         .forEach(el => {
                             const name = t.testPriceKey(el.sku)
-                                ? bot.schema.getName(SKU.fromString(el.sku), false)
+                                ? schema.getName(SKU.fromString(el.sku), false)
                                 : el.sku;
 
                             declined.invalidItems.push(`${isWebhookEnabled ? `_${name}_` : name} - ${el.price}`);
@@ -171,8 +205,8 @@ export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
                         .forEach(el => {
                             declined.disabledItems.push(
                                 isWebhookEnabled
-                                    ? `_${bot.schema.getName(SKU.fromString(el.sku), false)}_`
-                                    : bot.schema.getName(SKU.fromString(el.sku), false)
+                                    ? `_${schema.getName(SKU.fromString(el.sku), false)}_`
+                                    : schema.getName(SKU.fromString(el.sku), false)
                             );
                         });
                     break;
@@ -181,8 +215,8 @@ export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
                         declined.overstocked.push(
                             `${
                                 isWebhookEnabled
-                                    ? `_${bot.schema.getName(SKU.fromString(el.sku), false)}_`
-                                    : bot.schema.getName(SKU.fromString(el.sku), false)
+                                    ? `_${schema.getName(SKU.fromString(el.sku), false)}_`
+                                    : schema.getName(SKU.fromString(el.sku), false)
                             } (amount can buy was ${el.amountCanTrade}, offered ${el.amountOffered})`
                         );
                     });
@@ -193,8 +227,8 @@ export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
                             declined.understocked.push(
                                 `${
                                     isWebhookEnabled
-                                        ? `_${bot.schema.getName(SKU.fromString(el.sku), false)}_`
-                                        : bot.schema.getName(SKU.fromString(el.sku), false)
+                                        ? `_${schema.getName(SKU.fromString(el.sku), false)}_`
+                                        : schema.getName(SKU.fromString(el.sku), false)
                                 } (amount can sell was ${el.amountCanTrade}, taken ${el.amountTaking})`
                             );
                         }
@@ -204,8 +238,8 @@ export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
                     (meta.reasons.filter(el => el.reason.includes('🟫_DUPED_ITEMS')) as i.DupedItems[]).forEach(el => {
                         declined.dupedItems.push(
                             isWebhookEnabled
-                                ? `_${bot.schema.getName(SKU.fromString(el.sku))}_`
-                                : bot.schema.getName(SKU.fromString(el.sku))
+                                ? `_${schema.getName(SKU.fromString(el.sku))}_`
+                                : schema.getName(SKU.fromString(el.sku))
                         );
                     });
                     break;
@@ -215,7 +249,13 @@ export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
         if (highValue && highValue['has'] === undefined) {
             if (Object.keys(highValue.items.their).length > 0) {
                 // doing this to check if their side have any high value items, if so, push each name into accepted.highValue const.
-                const itemsName = t.getHighValueItems(highValue.items.their, bot);
+                const itemsName = t.getHighValueItems(
+                    highValue.items.their,
+                    bot.schemaManager.schema,
+                    bot.strangeParts,
+                    bot.options,
+                    bot.pricelist
+                );
 
                 for (const name in itemsName) {
                     if (!Object.prototype.hasOwnProperty.call(itemsName, name)) {
@@ -228,7 +268,13 @@ export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
 
             if (Object.keys(highValue.items.our).length > 0) {
                 // doing this to check if our side have any high value items, if so, push each name into accepted.highValue const.
-                const itemsName = t.getHighValueItems(highValue.items.our, bot);
+                const itemsName = t.getHighValueItems(
+                    highValue.items.our,
+                    bot.schemaManager.schema,
+                    bot.strangeParts,
+                    bot.options,
+                    bot.pricelist
+                );
 
                 for (const name in itemsName) {
                     if (!Object.prototype.hasOwnProperty.call(itemsName, name)) {
@@ -243,7 +289,13 @@ export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
         // This is for offer that bot created from commands
 
         if (highValue.items && Object.keys(highValue.items.their).length > 0) {
-            const itemsName = t.getHighValueItems(highValue.items.their, bot);
+            const itemsName = t.getHighValueItems(
+                highValue.items.their,
+                bot.schemaManager.schema,
+                bot.strangeParts,
+                bot.options,
+                bot.pricelist
+            );
 
             for (const name in itemsName) {
                 if (!Object.prototype.hasOwnProperty.call(itemsName, name)) {
@@ -255,7 +307,13 @@ export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
         }
 
         if (highValue.items && Object.keys(highValue.items.our).length > 0) {
-            const itemsName = t.getHighValueItems(highValue.items.our, bot);
+            const itemsName = t.getHighValueItems(
+                highValue.items.our,
+                bot.schemaManager.schema,
+                bot.strangeParts,
+                bot.options,
+                bot.pricelist
+            );
 
             for (const name in itemsName) {
                 if (!Object.prototype.hasOwnProperty.call(itemsName, name)) {
@@ -285,7 +343,7 @@ export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
         };
         const keyPrices = bot.pricelist.getKeyPrices;
         const value = t.valueDiff(offer);
-        const itemList = t.listItems(offer, bot, itemsName, true);
+        const itemList = t.listItems(offer, bot.schemaManager.schema, bot.options, bot.pricelist, itemsName, true);
 
         sendToAdmin(bot, offer, value, itemList, keyPrices, isOfferSent, timeTakenToProcessOrConstruct);
     }
@@ -321,11 +379,22 @@ export function sendToAdmin(
         `${customInitializer ? customInitializer : '/me'} Trade #${
             offer.id
         } with ${offer.partner.getSteamID64()} was declined. ❌` +
-            t.summarizeToChat(offer, bot, 'declined', false, value, true, isOfferSent) +
+            t.summarizeToChat({
+                offer,
+                schema: bot.schemaManager.schema,
+                options: bot.options,
+                pricelist: bot.pricelist,
+                inventoryManager: bot.inventoryManager,
+                type: 'declined',
+                withLink: false,
+                value,
+                isSteamChat: true,
+                isOfferSent
+            }) +
             (offerMessage.length !== 0 ? `\n\n💬 Offer message: "${offerMessage}"` : '') +
             (itemList !== '-' ? `\n\nItem lists:\n${itemList}` : '') +
             `\n\n${cTKeyRate} ${keyPrices.buy.toString()}/${keyPrices.sell.toString()}` +
-            ` (${keyPrices.src === 'manual' ? 'manual' : isCustomPricer ? 'custom-pricer' : 'prices.tf'})` +
+            ` (${keyPrices.src === 'manual' ? 'manual' : isCustomPricer ? 'custom-pricer' : 'pricedb.io'})` +
             `${
                 autokeys.isEnabled
                     ? ' | Autokeys: ' +

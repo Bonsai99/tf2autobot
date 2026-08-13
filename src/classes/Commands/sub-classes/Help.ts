@@ -3,9 +3,7 @@ import * as timersPromises from 'timers/promises';
 import Bot from '../../Bot';
 
 export default class HelpCommands {
-    constructor(private readonly bot: Bot) {
-        this.bot = bot;
-    }
+    constructor(private readonly bot: Bot) {}
 
     async helpCommand(steamID: SteamID, prefix: string): Promise<void> {
         const isAdmin = this.bot.isAdmin(steamID);
@@ -98,9 +96,9 @@ export default class HelpCommands {
                     [
                         `${prefix}deposit (sku|name|defindex)=<a>&amount=<number> - Deposit items.`,
                         `withdraw (sku|name|defindex)=<a>&amount=<number> - Withdraw items.`,
-                        `withdrawAll [withgroup=<itemgroup>[&&max=<number>]] - Withdraw all items.`,
+                        `withdrawAll [withgroup=<itemgroup>[&max=<number>]] - Withdraw all items.`,
                         `withdrawMptf [max=<number>] - [Exclusive Marketplace.tf Sellers] Withdraw items that does not exist on Marketplace.tf Dashboard items.`,
-                        `expand craftable=(true|false) - Use Backpack Expanders to increase the bot's inventory limit.`,
+                        `expand craftable=(true|false)[&amount=<number>] - Use Backpack Expanders to increase the bot's inventory limit.`,
                         `use (sku|assetid)=<a> - Use an item (such as Gift-Stuffed Stocking 2020 - sku: 5923;6;untradable).`,
                         `delete (sku|assetid)=<a> - Delete an item from the bot's inventory (SKU input only) 🚮`,
                         `message <steamid> <your message> - Send a message to a specific user 💬`,
@@ -169,13 +167,13 @@ export default class HelpCommands {
                 '.\n✨=== Request ===✨\n- ' +
                     [
                         `${prefix}check (sku|name|defindex)=<a> - Request the current price for an item from ${
-                            isCustomPricer ? 'Custom Pricer' : 'Prices.TF'
+                            isCustomPricer ? 'Custom Pricer' : 'PriceDB.io'
                         }`,
                         `pricecheck (sku|name|defindex|item)=<a> - Request an item to be price checked by ${
-                            isCustomPricer ? 'Custom Pricer' : 'Prices.TF'
+                            isCustomPricer ? 'Custom Pricer' : 'PriceDB.io'
                         }`,
                         `pricecheckall - Request all items in the bot's pricelist to be price checked by ${
-                            isCustomPricer ? 'Custom Pricer' : 'Prices.TF'
+                            isCustomPricer ? 'Custom Pricer' : 'PriceDB.io'
                         }`
                     ].join(`\n- ${prefix}`)
             );

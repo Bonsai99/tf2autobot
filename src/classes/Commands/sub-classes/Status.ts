@@ -13,9 +13,7 @@ import SteamTradeOfferManager from '@tf2autobot/tradeoffer-manager';
 // Bot status
 
 export default class StatusCommands {
-    constructor(private readonly bot: Bot) {
-        this.bot = bot;
-    }
+    constructor(private readonly bot: Bot) {}
 
     async statsCommand(steamID: SteamID): Promise<void> {
         const tradesFromEnv = this.bot.options.statistics.lastTotalTrades;
@@ -107,15 +105,16 @@ export default class StatusCommands {
         void sendStats(this.bot, true, steamID);
     }
 
-    statsWipeCommand(steamID: SteamID, message: string): void {
+    statsWipeCommand(steamID: SteamID, message: string, prefix: string): void {
         const params = CommandParser.parseParams(CommandParser.removeCommand(message));
 
-        if (params.i_am_sure != 'yes_i_am') {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        if (!['yes', true].includes(params.confirm)) {
             return this.bot.sendMessage(
                 steamID,
                 `⚠️ Are you sure you want to delete all stats?` +
                     `\n- This process is irreversible and will delete the record of accepted trades!` +
-                    `\n- If you're sure, try again with i_am_sure=yes_i_am as a parameter.`
+                    `\n- If you're sure, try again with confirm=true or confirm=yes as a parameter.`
             );
         }
 
@@ -138,7 +137,7 @@ export default class StatusCommands {
 
             this.bot.handler.commands.useUpdateOptionsCommand(
                 steamID,
-                '!config statistics.lastTotalTrades=0&statistics.startingTimeInUnix=0&statistics.lastTotalProfitMadeInRef=0&statistics.lastTotalProfitOverpayInRef=0&statistics.profitDataSinceInUnix=0'
+                `${prefix}config statistics.lastTotalTrades=0&statistics.startingTimeInUnix=0&statistics.lastTotalProfitMadeInRef=0&statistics.lastTotalProfitOverpayInRef=0&statistics.profitDataSinceInUnix=0`
             );
         } catch (err) {
             this.bot.sendMessage(steamID, `❌ Error while deleting stats: ${JSON.stringify(err)}`);
@@ -156,11 +155,11 @@ export default class StatusCommands {
 
     async itemStatsCommand(steamID: SteamID, message: string): Promise<void> {
         message = CommandParser.removeCommand(message).trim();
-        let sku = '';
+        let sku: string;
         if (testPriceKey(message)) {
             sku = message;
         } else {
-            sku = this.bot.schema.getSkuFromName(message);
+            sku = this.bot.schemaManager.schema.getSkuFromName(message);
 
             if (sku.includes('null') || sku.includes('undefined')) {
                 return this.bot.sendMessage(
@@ -175,7 +174,7 @@ export default class StatusCommands {
         let soldMessage = '';
         let adminOnlyMessage = '';
 
-        let reply = `Recorded sales for ${this.bot.schema.getName(SKU.fromString(sku))}\n\n`;
+        let reply = `Recorded sales for ${this.bot.schemaManager.schema.getName(SKU.fromString(sku))}\n\n`;
 
         const weapons = this.bot.handler.isWeaponsAsCurrency.enable
             ? this.bot.handler.isWeaponsAsCurrency.withUncraft
@@ -407,7 +406,7 @@ export default class StatusCommands {
         } else this.bot.sendMessage(steamID, reply);
     }
 
-    versionCommand(steamID: SteamID): void {
+    versionCommand(steamID: SteamID, prefix: string): void {
         this.bot.sendMessage(
             steamID,
             `Currently running TF2Autobot@v${process.env.BOT_VERSION}. Checking for a new version...`
@@ -430,8 +429,8 @@ export default class StatusCommands {
                         return this.bot.sendMessage(
                             steamID,
                             newVersionIsMajor
-                                ? '⚠️ !updaterepo is not available. Please upgrade the bot manually.'
-                                : `✅ Update now with !updaterepo command now!`
+                                ? `⚠️ ${prefix}updaterepo is not available. Please upgrade the bot manually.`
+                                : `✅ Update now with ${prefix}updaterepo command!`
                         );
                     }
 
@@ -444,17 +443,17 @@ export default class StatusCommands {
                     if (process.platform === 'win32') {
                         messages.concat([
                             '\n💻 To update run the following command inside your tf2autobot directory using Command Prompt:\n',
-                            '/code rmdir /s /q node_modules dist && git reset HEAD --hard && git pull --prune && npm install --no-audit && npm run build && node dist/app.js'
+                            '/code rmdir /s /q node_modules dist && git reset HEAD --hard && git pull --prune && npm ci --no-audit && npm run build && node dist/app.js'
                         ]);
                     } else if (['win32', 'linux', 'darwin', 'openbsd', 'freebsd'].includes(process.platform)) {
                         messages.concat([
                             '\n💻 To update run the following command inside your tf2autobot directory:\n',
-                            '/code rm -r node_modules dist && git reset HEAD --hard && git pull --prune && npm install --no-audit && npm run build && pm2 restart ecosystem.json'
+                            '/code rm -r node_modules dist && git reset HEAD --hard && git pull --prune && npm ci --no-audit && npm run build && pm2 restart ecosystem.json'
                         ]);
                     } else {
                         messages.concat([
                             '❌ Failed to find what OS your server is running! Kindly run the following standard command for most users inside your tf2autobot folder:\n',
-                            '/code rm -r node_modules dist && git reset HEAD --hard && git pull --prune && npm install --no-audit && npm run build && pm2 restart ecosystem.json'
+                            '/code rm -r node_modules dist && git reset HEAD --hard && git pull --prune && npm ci --no-audit && npm run build && pm2 restart ecosystem.json'
                         ]);
                     }
 

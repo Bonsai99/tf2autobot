@@ -22,25 +22,36 @@ export function getItemAndAmount(
     const name = parsedMessage.name;
     let amount = parsedMessage.amount;
 
-    if (['!price', '!sellcart', '!buycart', '!sell', '!buy', '!pc', '!s', '!b'].includes(name)) {
+    if (
+        [
+            `${prefix}price`,
+            `${prefix}sellcart`,
+            `${prefix}buycart`,
+            `${prefix}sell`,
+            `${prefix}buy`,
+            `${prefix}pc`,
+            `${prefix}s`,
+            `${prefix}b`
+        ].includes(name)
+    ) {
         bot.sendMessage(
             steamID,
-            '⚠️ You forgot to add a name. Here\'s an example: "' +
-                (name.includes('!price')
-                    ? '!price'
-                    : name.includes('!sellcart')
-                      ? '!sellcart'
-                      : name.includes('!buycart')
-                        ? '!buycart'
-                        : name.includes('!sell')
-                          ? '!sell'
-                          : name.includes('!buy')
-                            ? '!buy'
-                            : name.includes('!pc')
-                              ? '!pc'
-                              : name.includes('!s')
-                                ? '!s'
-                                : '!b') +
+            `⚠️ You forgot to add a name. Here's an example: "${prefix}` +
+                (name.includes(`${prefix}price`)
+                    ? `price`
+                    : name.includes(`${prefix}sellcart`)
+                      ? `sellcart`
+                      : name.includes(`${prefix}buycart`)
+                        ? 'buycart'
+                        : name.includes(`${prefix}sell`)
+                          ? 'sell'
+                          : name.includes(`${prefix}buy`)
+                            ? 'buy'
+                            : name.includes(`${prefix}pc`)
+                              ? 'pc'
+                              : name.includes(`${prefix}s`)
+                                ? 's'
+                                : 'b') +
                 ' Team Captain"'
         );
         return null;
@@ -221,7 +232,8 @@ export function parseItemAndAmountFromMessage(message: string): { name: string; 
 export function getItemFromParams(
     steamID: SteamID | string,
     params: UnknownDictionaryKnownValues,
-    bot: Bot
+    bot: Bot,
+    schema: SchemaManager.Schema
 ): MinimumItem | null {
     if (params.id) {
         const item = bot.inventoryManager.getInventory.findByAssetid(String(params.id));
@@ -236,7 +248,7 @@ export function getItemFromParams(
 
     let foundSomething = false;
     if (params.item !== undefined) {
-        const sku = bot.schema.getSkuFromName(params.item as string);
+        const sku = schema.getSkuFromName(params.item as string);
 
         if (sku.includes('null') || sku.includes('undefined')) {
             bot.sendMessage(
@@ -252,12 +264,9 @@ export function getItemFromParams(
         // Look for all items that have the same name
 
         const match: SchemaManager.SchemaItem[] = [];
+        const items = schema.raw.schema.items;
 
-        const itemsCount = bot.schema.raw.schema.items.length;
-
-        for (let i = 0; i < itemsCount; i++) {
-            const item = bot.schema.raw.schema.items[i];
-
+        for (const item of items) {
             if (item.item_name === 'Name Tag' && item.defindex === 2093) {
                 // skip and let it find Name Tag with defindex 5020
                 continue;
@@ -319,7 +328,7 @@ export function getItemFromParams(
     }
 
     if (params.defindex !== undefined) {
-        const schemaItem = bot.schema.getItemByDefindex(params.defindex as number);
+        const schemaItem = schema.getItemByDefindex(params.defindex as number);
         if (schemaItem === null) {
             bot.sendMessage(
                 steamID,
@@ -413,7 +422,7 @@ export function getItemFromParams(
 
         item.quality = params.quality;
     } else if (params.quality !== undefined) {
-        const quality = bot.schema.getQualityIdByName(params.quality as string);
+        const quality = schema.getQualityIdByName(params.quality as string);
         if (quality === null) {
             bot.sendMessage(
                 steamID,
@@ -426,21 +435,21 @@ export function getItemFromParams(
 
     if (params.craftable !== undefined) {
         if (typeof params.craftable !== 'boolean') {
-            bot.sendMessage(steamID, `Craftable must be "true" or "false".`);
+            bot.sendMessage(steamID, `Parameter "craftable" must be "true" or "false".`);
             return null;
         }
         item.craftable = params.craftable;
     }
 
     if (typeof params.paint === 'number') {
-        const paint = bot.schema.getPaintNameByDecimal(params.paint);
+        const paint = schema.getPaintNameByDecimal(params.paint);
         if (paint === null) {
             bot.sendMessage(steamID, `❌ Could not find a paint in the schema with the decimal "${params.paint}".`);
             return null;
         }
         item.paint = params.paint;
     } else if (params.paint !== undefined) {
-        const paint = bot.schema.getPaintDecimalByName(params.paint as string);
+        const paint = schema.getPaintDecimalByName(params.paint as string);
         if (paint === null) {
             bot.sendMessage(
                 steamID,
@@ -453,7 +462,7 @@ export function getItemFromParams(
 
     if (params.festive !== undefined) {
         if (typeof params.festive !== 'boolean') {
-            bot.sendMessage(steamID, `"festive" (for Festivized item) must be "true" or "false".`);
+            bot.sendMessage(steamID, `Parameter "festive" (for Festivized item) must be "true" or "false".`);
             return null;
         }
         item.festive = params.festive;
@@ -461,7 +470,7 @@ export function getItemFromParams(
 
     if (params.australium !== undefined) {
         if (typeof params.australium !== 'boolean') {
-            bot.sendMessage(steamID, `Australium must be "true" or "false".`);
+            bot.sendMessage(steamID, `Parameter "australium" must be "true" or "false".`);
             return null;
         }
         item.australium = params.australium;
@@ -500,7 +509,7 @@ export function getItemFromParams(
     }
 
     if (typeof params.effect === 'number') {
-        const effect = bot.schema.getEffectById(params.effect);
+        const effect = schema.getEffectById(params.effect);
         if (effect === null) {
             bot.sendMessage(
                 steamID,
@@ -508,9 +517,9 @@ export function getItemFromParams(
             );
             return null;
         }
-        item.effect = bot.schema.getEffectIdByName(effect);
+        item.effect = schema.getEffectIdByName(effect);
     } else if (params.effect !== undefined) {
-        const effect = bot.schema.getEffectIdByName(params.effect as string);
+        const effect = schema.getEffectIdByName(params.effect as string);
         if (effect === null) {
             bot.sendMessage(
                 steamID,
@@ -522,14 +531,14 @@ export function getItemFromParams(
     }
 
     if (typeof params.paintkit === 'number') {
-        const paintkit = bot.schema.getSkinById(params.paintkit);
+        const paintkit = schema.getSkinById(params.paintkit);
         if (paintkit === null) {
             bot.sendMessage(steamID, `❌ Could not find a skin in the schema with the id "${item.paintkit}".`);
             return null;
         }
-        item.paintkit = bot.schema.getSkinIdByName(paintkit);
+        item.paintkit = schema.getSkinIdByName(paintkit);
     } else if (params.paintkit !== undefined) {
-        const paintkit = bot.schema.getSkinIdByName(params.paintkit as string);
+        const paintkit = schema.getSkinIdByName(params.paintkit as string);
         if (paintkit === null) {
             bot.sendMessage(steamID, `❌ Could not find a skin in the schema with the name "${item.paintkit}".`);
             return null;
@@ -539,7 +548,7 @@ export function getItemFromParams(
 
     if (params.quality2 !== undefined) {
         if (typeof params.quality2 !== 'boolean') {
-            bot.sendMessage(steamID, `❌ "quality2" must only be type boolean (true or false).`);
+            bot.sendMessage(steamID, `❌ Parameter "quality2" must only be type boolean (true or false).`);
             return null;
         }
 
@@ -577,7 +586,7 @@ export function getItemFromParams(
     }
 
     if (typeof params.target === 'number') {
-        const schemaItem = bot.schema.getItemByDefindex(params.target);
+        const schemaItem = schema.getItemByDefindex(params.target);
         if (schemaItem === null) {
             bot.sendMessage(
                 steamID,
@@ -588,7 +597,7 @@ export function getItemFromParams(
 
         item.target = schemaItem.defindex;
     } else if (params.target !== undefined) {
-        const schemaItem = bot.schema.getItemByItemName(params.target as string);
+        const schemaItem = schema.getItemByItemName(params.target as string);
         if (schemaItem === null) {
             bot.sendMessage(
                 steamID,
@@ -602,7 +611,7 @@ export function getItemFromParams(
 
     if (typeof params.output === 'number') {
         // User gave defindex
-        const schemaItem = bot.schema.getItemByDefindex(params.output);
+        const schemaItem = schema.getItemByDefindex(params.output);
         if (schemaItem === null) {
             bot.sendMessage(
                 steamID,
@@ -616,15 +625,8 @@ export function getItemFromParams(
         }
     } else if (item.output !== null) {
         // Look for all items that have the same name
-        const match: SchemaManager.SchemaItem[] = [];
-        const itemsCount = bot.schema.raw.schema.items.length;
-
-        for (let i = 0; i < itemsCount; i++) {
-            if (bot.schema.raw.schema.items[i].item_name === params.name) {
-                match.push(bot.schema.raw.schema.items[i]);
-            }
-        }
-
+        const items = schema.raw.schema.items;
+        const match = items.filter(item => item.item_name === params.name);
         const matchCount = match.length;
 
         if (matchCount === 0) {
@@ -657,11 +659,11 @@ export function getItemFromParams(
     }
 
     if (params.outputQuality !== undefined) {
-        const quality = bot.schema.getQualityIdByName(params.outputQuality as string);
+        const quality = schema.getQualityIdByName(params.outputQuality as string);
         if (quality === null) {
             bot.sendMessage(
                 steamID,
-                `❌ Could not find a quality in the schema with the name "${params.outputQuality as string}".`
+                `❌ Could not find a "outputQuality" in the schema with the name "${params.outputQuality as string}".`
             );
             return null;
         }
@@ -670,7 +672,7 @@ export function getItemFromParams(
 
     if (params.crateseries !== undefined) {
         if (typeof params.crateseries !== 'number') {
-            bot.sendMessage(steamID, `❌ crateseries must only be type number!.`);
+            bot.sendMessage(steamID, `❌ Parameter "crateseries" must only be type number!.`);
             return null;
         }
 
@@ -698,7 +700,7 @@ export function getItemFromParams(
     }
 
     delete params.name;
-    return fixItem(item, bot.schema);
+    return fixItem(item, schema);
 }
 
 export function removeLinkProtocol(message: string): string {

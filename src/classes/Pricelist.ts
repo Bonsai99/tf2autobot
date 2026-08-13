@@ -10,6 +10,7 @@ import log from '../lib/logger';
 import validator from '../lib/validator';
 import { sendWebHookPriceUpdateV1, sendAlert, sendFailedPriceUpdate } from './DiscordWebhook/export';
 import IPricer, { GetItemPriceResponse, Item } from './IPricer';
+import * as timersPromises from 'timers/promises';
 
 export enum PricelistChangedSource {
     Command = 'COMMAND',
@@ -247,7 +248,6 @@ export default class Pricelist extends EventEmitter {
         private bot?: Bot
     ) {
         super();
-        this.schema = schema;
         this.maxAge = this.options.pricelist.priceAge.maxInSeconds || 8 * 60 * 60;
         this.boundHandlePriceChange = this.handlePriceChange.bind(this);
     }
@@ -255,9 +255,8 @@ export default class Pricelist extends EventEmitter {
     get isUseCustomPricer(): boolean {
         return !(
             this.options.customPricerUrl === undefined ||
-            this.options.customPricerUrl === '' || // empty == default which is api2.prices.tf
-            this.options.customPricerUrl === 'https://api.prices.tf' ||
-            this.options.customPricerUrl === 'https://api2.prices.tf'
+            this.options.customPricerUrl === '' || // empty == default which is https://pricedb.io/api
+            this.options.customPricerUrl === 'https://pricedb.io/api' // Because people link experimenting 🧠
         );
     }
 
@@ -424,15 +423,24 @@ export default class Pricelist extends EventEmitter {
 
         if (entry.autoprice && !entry.isPartialPriced && !isBulk) {
             // skip this part if autoprice is false and/or isPartialPriced is true
-            const price: GetItemPriceResponse = await this.priceSource.getPrice(entry.sku).catch(err => {
-                throw new Error(
-                    `Unable to get current prices for ${entry.sku}: ${
-                        (err as ErrorRequest).body && (err as ErrorRequest).body.message
-                            ? (err as ErrorRequest).body.message
-                            : (err as ErrorRequest).message
-                    }`
-                );
-            });
+            let price: GetItemPriceResponse;
+            try {
+                price = await this.priceSource.getPrice(entry.sku);
+            } catch (err) {
+                log.warn('Failed to get item price, retrying with legacy sku generation...', err);
+                const legacySku = SKU.fromObject(SKU.fromString(entry.sku), true);
+
+                await timersPromises.setTimeout(1000);
+                price = await this.priceSource.getPrice(legacySku).catch(err_ => {
+                    throw new Error(
+                        `Unable to get current prices for ${entry.sku}: ${
+                            (err_ as ErrorRequest).body && (err_ as ErrorRequest).body.message
+                                ? (err_ as ErrorRequest).body.message
+                                : (err_ as ErrorRequest).message
+                        }`
+                    );
+                });
+            }
 
             const newPrices = {
                 buy: new Currencies(price.buy),
@@ -530,10 +538,18 @@ export default class Pricelist extends EventEmitter {
         try {
             return await this.priceSource.getPrice(sku).then(response => new ParsedPrice(response));
         } catch (err) {
-            const errStringify = JSON.stringify(err);
-            const errMessage = errStringify === '' ? (err as Error)?.message : errStringify;
-            log.debug(`getItemPrices failed ${errMessage}`);
-            return null;
+            // Try with legacy sku
+            log.warn('getItemPrices failed, retrying with legacy sku generation...', err);
+            const legacySku = SKU.fromObject(SKU.fromString(sku), true);
+            try {
+                await timersPromises.setTimeout(1000);
+                return await this.priceSource.getPrice(legacySku).then(response => new ParsedPrice(response));
+            } catch (err_) {
+                const errStringify = JSON.stringify(err_);
+                const errMessage = errStringify === '' ? (err_ as Error)?.message : errStringify;
+                log.warn(`getItemPrices failed ${errMessage}`);
+                return null;
+            }
         }
     }
 
@@ -557,6 +573,7 @@ export default class Pricelist extends EventEmitter {
         if (errors !== null) {
             throw new Error(errors.join(', '));
         }
+
         if (this.hasPrice({ priceKey: entryData.id ?? entryData.sku, onlyEnabled: false })) {
             throw new Error('Item is already priced');
         }
@@ -1115,9 +1132,9 @@ export default class Pricelist extends EventEmitter {
             [
                 `old: ${oldPrices.buy.toString()}/${oldPrices.sell.toString()}`,
                 `current: ${currPrices.buy.toString()}/${currPrices.sell.toString()}`,
-                `pricestf: ${newPrices.buy.toString()}/${newPrices.sell.toString()}`
-            ].join('\n▸ ') +
-            `\n - Time in pricelist: ${currPrices.time} (${dayjs.unix(currPrices.time).fromNow()})`
+                `pricedb.io: ${newPrices.buy.toString()}/${newPrices.sell.toString()}`,
+                `Time in pricelist: ${currPrices.time} (${dayjs.unix(currPrices.time).fromNow()})`
+            ].join('\n▸ ')
         );
     }
 
@@ -1136,7 +1153,8 @@ export default class Pricelist extends EventEmitter {
     }
 
     private handlePriceChange(data: GetItemPriceResponse): void {
-        const match = this.getPrice({ priceKey: data.sku });
+        const standardizeSku = SKU.fromObject(SKU.fromString(data.sku));
+        const match = this.getPrice({ priceKey: standardizeSku });
         const opt = this.bot.options;
         const dw = opt.discordWebhook.priceUpdate;
         const isDwEnabled = dw.enable && dw.url !== '';
@@ -1149,7 +1167,7 @@ export default class Pricelist extends EventEmitter {
                 sell: new Currencies(data.sell)
             };
         } catch (err) {
-            log.error(`Fail to update ${data.sku}`, {
+            log.error(`Fail to update ${standardizeSku} (source sku: ${data.sku})`, {
                 error: err as Error,
                 rawData: data
             });
@@ -1167,7 +1185,7 @@ export default class Pricelist extends EventEmitter {
             return;
         }
 
-        if (data.sku === '5021;6' && this.globalKeyPrices !== undefined) {
+        if (standardizeSku === '5021;6' && this.globalKeyPrices !== undefined) {
             /**New received prices data.*/
 
             const canUseKeyPricesFromSource = Pricelist.verifyKeyPrices(newPrices);
@@ -1195,7 +1213,7 @@ export default class Pricelist extends EventEmitter {
                 // Only update global key rate if key is not in pricelist
                 // OR if exist, it's autoprice enabled (true)
                 // OR if Autokeys and Scrap Adjustment enabled, then check whether
-                // current global key rate are the same as current prices.tf key rate.
+                // current global key rate are the same as current pricedb.io key rate.
                 // if same, means autopriced and need to update to the latest price
                 // (and autokeys/scrap adjustment will update key prices after new trade).
                 // else entirely, key was manually priced and ignore updating global key rate.
@@ -1230,6 +1248,9 @@ export default class Pricelist extends EventEmitter {
                 // Ignore
                 return;
             }
+
+            // Only log price change that exists in pricelist and buy/sell value changed
+            log.debug('Received price update from PriceDB:', data);
 
             let pricesChanged = false;
             const currentStock = this.bot.inventoryManager.getInventory.getAmount({
@@ -1390,7 +1411,9 @@ export default class Pricelist extends EventEmitter {
 
     static transformPricesFromPricer(prices: Item[]): { [p: string]: Item } {
         return prices.reduce((obj, i) => {
-            obj[i.sku] = i;
+            const standardizeSku = SKU.fromObject(SKU.fromString(i.sku));
+            i.sku = standardizeSku;
+            obj[standardizeSku] = i;
             return obj;
         }, {});
     }

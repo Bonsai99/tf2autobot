@@ -6,9 +6,7 @@ import { generateLinks, timeNow } from '../../../lib/tools/export';
 import { sendPartnerMessage, sendAdminMessage } from '../../DiscordWebhook/export';
 
 export default class MessageCommand {
-    constructor(private readonly bot: Bot) {
-        this.bot = bot;
-    }
+    constructor(private readonly bot: Bot) {}
 
     message(steamID: SteamID, message: string, prefix: string): void {
         const isAdmin = this.bot.isAdmin(steamID);
@@ -19,7 +17,7 @@ export default class MessageCommand {
             if (isAdmin) {
                 this.bot.sendMessage(
                     steamID,
-                    '❌ The message command is disabled. Enable it by sending `!config commands.message.enable=true`.'
+                    `❌ The message command is disabled. Enable it by sending "${prefix}config commands.message.enable=true".`
                 );
             } else {
                 this.bot.sendMessage(
@@ -47,8 +45,8 @@ export default class MessageCommand {
                     `❌ Your syntax is wrong or the SteamID is incorrectly formatted. Here's an example: "${prefix}message 76561198120070906 Hi"` +
                         "\n\nHow to get the targeted user's SteamID?" +
                         '\n1. Go to his/her profile page.' +
-                        '\n2. Go to https://steamrep.com/' +
-                        '\n3. View this gif: https://user-images.githubusercontent.com/47635037/96715154-be80b580-13d5-11eb-9bd5-39613f600f6d.gif'
+                        '\n2. Go to https://rep.tf/' +
+                        '\n3. View this gif: https://gyazo.com/14064d86ddcbc6e273ed8af6b65eed64'
                 );
             }
 
@@ -60,8 +58,8 @@ export default class MessageCommand {
                     `❌ "${steamIDString}" is not a valid SteamID.` +
                         "\n\nHow to get the targeted user's SteamID?" +
                         '\n1. Go to his/her profile page.' +
-                        '\n2. Go to https://steamrep.com/' +
-                        '\n3. View this gif: https://user-images.githubusercontent.com/47635037/96715154-be80b580-13d5-11eb-9bd5-39613f600f6d.gif'
+                        '\n2. Go to https://rep.tf/' +
+                        '\n3. View this gif: https://gyazo.com/14064d86ddcbc6e273ed8af6b65eed64'
                 );
             } else if (!this.bot.friends.isFriend(recipientSteamID)) {
                 return this.bot.sendMessage(steamID, `❌ I am not friends with the user.`);
@@ -81,7 +79,7 @@ export default class MessageCommand {
                           isShowOwner && adminDetails ? adminDetails.player_name : 'the owner'
                       }: ${reply}` +
                           '\n\n❔ Hint: You can use the !message command to respond to the owner of this bot.' +
-                          '\nExample: !message Hi Thanks!'
+                          `\nExample: ${prefix}message Hi Thanks!`
             );
 
             // Send a notification to the admin with message contents & details
@@ -160,7 +158,7 @@ export default class MessageCommand {
                         `"${msg}". ` +
                         `\nSteam: ${links.steam}` +
                         `\nBackpack.tf: ${links.bptf}` +
-                        `\nSteamREP: ${links.steamrep}`,
+                        `\nRep.tf: ${links.reptf}`,
                     []
                 );
             }

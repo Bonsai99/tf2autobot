@@ -9,9 +9,20 @@ import { Currency } from '../types/TeamFortress2';
 export const DEFAULTS: JsonOptions = {
     globalDisable: {
         messages: false,
+        offerMessages: false,
+        unfriendMessage: false,
         greeting: false,
         commands: false,
         adminCommands: false
+    },
+
+    steamConnection: {
+        autoReconnect: {
+            enable: true,
+            maxAttempts: 5,
+            delaySeconds: 30,
+            exponentialBackoff: true
+        }
     },
 
     miscSettings: {
@@ -540,7 +551,8 @@ export const DEFAULTS: JsonOptions = {
             mentionOwner: {
                 enable: false,
                 itemSkus: [],
-                tradeValueInRef: 0
+                tradeValueInRef: 0,
+                withEscrow: true
             }
         },
         declinedTrade: {
@@ -1187,6 +1199,8 @@ interface OnlyEnable {
 
 interface GlobalDisable {
     messages?: boolean;
+    offerMessages?: boolean;
+    unfriendMessage?: boolean;
     greeting?: boolean;
     commands?: boolean;
     adminCommands?: boolean;
@@ -1223,6 +1237,18 @@ interface Game {
 interface Counteroffer extends OnlyEnable {
     skipIncludeMessage?: boolean;
     autoDeclineLazyOffer?: boolean;
+}
+
+// ------------ SteamConnection ------------
+
+interface SteamConnection {
+    autoReconnect?: AutoReconnect;
+}
+
+interface AutoReconnect extends OnlyEnable {
+    maxAttempts?: number;
+    delaySeconds?: number;
+    exponentialBackoff?: boolean;
 }
 
 // --------- Misc Settings ----------
@@ -1690,6 +1716,7 @@ interface MiscTradeSummary extends OnlyNote {
 interface MentionOwner extends OnlyEnable {
     itemSkus?: string[];
     tradeValueInRef?: number;
+    withEscrow?: boolean;
 }
 
 interface OfferReviewDW extends OnlyEnable {
@@ -2170,6 +2197,7 @@ interface StrangeParts {
 
 export interface JsonOptions {
     globalDisable?: GlobalDisable;
+    steamConnection?: SteamConnection;
     miscSettings?: MiscSettings;
     sendAlert?: SendAlert;
     pricelist?: Pricelist;

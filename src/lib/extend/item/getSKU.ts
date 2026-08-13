@@ -1,8 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { EconItem } from '@tf2autobot/tradeoffer-manager';
 import SchemaManager, { Item, Paints, Schema } from '@tf2autobot/tf2-schema';
 import SKU from '@tf2autobot/tf2-sku';
-import url from 'url';
 import { fixItem } from '../../items';
 
 interface ParsedDescriptions {
@@ -121,7 +119,8 @@ function getDefindex(item: EconItem): number | null {
 
     const link = item.getAction('Item Wiki Page...');
     if (link !== null) {
-        return parseInt(url.parse(link, true).query.id.toString(), 10);
+        const id = new URL(link).searchParams.get('id');
+        return id ? parseInt(id.toString(), 10) : null;
     }
 
     // Last option is to get the name of the item and try and get the defindex that way
@@ -398,12 +397,10 @@ function getTarget(item: EconItem, schema: SchemaManager.Schema): number | null 
 
     if (item.market_hash_name.includes('Strangifier')) {
         // Strangifiers
-        const gameItem = schema.raw.items_game.items[defindex];
+        const targetDefindex = schema.getStrangifierTarget(defindex);
 
-        if (gameItem.attributes !== undefined && gameItem.attributes['tool target item'] !== undefined) {
-            return parseInt(gameItem.attributes['tool target item'].value as string, 10);
-        } else if (gameItem.static_attrs !== undefined && gameItem.static_attrs['tool target item'] !== undefined) {
-            return parseInt(gameItem.static_attrs['tool target item'] as string, 10);
+        if (targetDefindex !== null) {
+            return targetDefindex;
         }
 
         // Get schema item using market_hash_name
